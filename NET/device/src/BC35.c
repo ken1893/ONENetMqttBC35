@@ -156,88 +156,71 @@ unsigned char *BC35_GetIPD(unsigned short timeOut)
     {
         if(BC35_WaitRecive() == REV_OK)						// 如果接收完成
         {
-            UsartPrintf(USART_DEBUG,(char *)BC35_buf);
+					UsartPrintf(USART_DEBUG,"receive signal is:\r\n");
+          UsartPrintf(USART_DEBUG,(char *)BC35_buf);
 					
 					if(strstr((char *)BC35_buf, ",6002,") != NULL)
 					{
 						NetStatus = 0;      // receive data
+						ptrIPD = strstr((char *)BC35_buf, ",6002,");
 					}
 					else if(strstr((char *)BC35_buf, "+NSONMI:") != NULL)
 					{
 						NetStatus = 1;      // receive data flag
+						ptrIPD = strstr((char *)BC35_buf, "+NSONMI:");
 					}
 					else 
 					{
 						UsartPrintf(USART_DEBUG, "\"IPD\" not found\r\n");
+						NetStatus = 0xff;				  // 处理完成
+						return NULL;
 					}
-					
 					  
-					  switch(NetStatus)
-						{
+					switch(NetStatus)
+				  {
 							case 0:     // 等待连接
 								  SetLED(1);
-									//ptrIPD = strstr((char *)BC35_buf, "2,183.230.40.39,6002,");
-							    ptrIPD = strstr((char *)BC35_buf, ",6002,");
-									if(ptrIPD == NULL)										// 如果没找到，可能是IPDATA头的延迟，还是需要等待一会，但不会超过设定的时间
-									{
-										UsartPrintf(USART_DEBUG, "\"IPD\" not found\r\n");
-									}
-									else
-									{
-										UsartPrintf(USART_DEBUG, "收到服务器数据\r\n");
-										ptrIPD = strchr(ptrIPD, '\n');							//找到'\n'
-										if(ptrIPD != NULL)
-										{
-												ptrIPD++;
-												UsartPrintf(USART_DEBUG, "接收完成\r\n");
-												UsartPrintf(USART_DEBUG,(char *)ptrIPD);
-												NetStatus = 1;       // onenet 连接完成，等待接收数据
-												return (unsigned char *)(ptrIPD);
-										}
-										else
-                    return NULL;
-									}
+
+									UsartPrintf(USART_DEBUG, "收到服务器数据\r\n");
+							
+									UsartPrintf(USART_DEBUG,(char *)BC35_buf);		
+                  UsartPrintf(USART_DEBUG, "接收完成\r\n");		
+									
+							    return (unsigned char *)(ptrIPD);
+                  NetStatus = 0xff;				  // 处理完成			
 								break;
 							
 									// +NSONMI:2,47
 							case 1:      // 接收
 								  
 							    SetLED(0);
-									ptrIPD = strstr((char *)BC35_buf, "+NSONMI:");
-							
-									if(ptrIPD == NULL)										// 如果没找到，可能是IPDATA头的延迟，还是需要等待一会，但不会超过设定的时间
-									{
-										UsartPrintf(USART_DEBUG, "\"IPD\" not found\r\n");
-									}
-									else
-									{
-										RecNum = ptrIPD + 10;
-										num = atoi(RecNum);
-										UsartPrintf(USART_DEBUG, "RecNUM:%s;intnum:%d\r\n",RecNum,num);
+					
+									RecNum = ptrIPD + 10;
+									num = atoi(RecNum);
+									UsartPrintf(USART_DEBUG, "RecNUM:%s;intnum:%d\r\n",RecNum,num);
 										
-										sprintf(cmdbuf, "AT+NSORF=2,%d\r\n",num);
+									sprintf(cmdbuf, "AT+NSORF=2,%d\r\n",num);
 										
-										Usart_SendString(USART_BC35,(unsigned char *)cmdbuf, 15);	//发送设备连接请求数据
-										//Usart_SendString(USART_BC35,"AT+NSORF=2,47\r\n", 15);	//发送设备连接请求数据
-										if(BC35_WaitRecive() == REV_OK)							//如果收到数据
-										{
+									Usart_SendString(USART_BC35,(unsigned char *)cmdbuf, 15);	//发送设备连接请求数据
+										
+									if(BC35_WaitRecive() == REV_OK)							//如果收到数据
+									{
 											UsartPrintf(USART_DEBUG,(char *)BC35_buf);
-										}
-										delay_tms(50);
-										//		UsartPrintf(USART_DEBUG,(char *)HTTP_BufSend);
-										NetStatus = 0;       //
-										
-										UsartPrintf(USART_DEBUG,"Receive OK\r\n");
 									}
+									delay_tms(50);
+										
+									UsartPrintf(USART_DEBUG,"Receive data ready!\r\n");
+									NetStatus = 0xff;				  // 处理完成
 								break;
 							
 							default:
 								break;
 						}
         }
-        delay_tms(1);												//延时等待
+        delay_tms(1);												// 延时等待
     }while(timeOut--);
-    return NULL;														//超时还未找到，返回空指针
+		
+    return NULL;														// 超时还未找到，返回空指针
 }
 
 //==========================================================
