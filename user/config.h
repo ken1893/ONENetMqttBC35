@@ -12,7 +12,8 @@
 #define enable_irq()   __enable_irq();
 #define disable_irq()  __disable_irq();
 
-#define ActionReg 0x00           
+#define ActionReg    0x00      
+#define RESTARTTIMES 10 
 
 // 设备动作
 enum ActionType {
@@ -109,6 +110,9 @@ MAIN_EXT uint8_t NetStatus;         //
 
 MAIN_EXT uint8_t DeviceCount;       // 设备数量
 MAIN_EXT uint8_t askTimes;          // 问询序列，本设备采用分时闻讯方式获取从机数据
+
+MAIN_EXT uint8_t ErrorTimes;        // 故障重启次数
+MAIN_EXT uint8_t dog_flag;          // 喂狗标志
 
 MAIN_EXT uint8_t SetLED(uint8_t ls);    // 
 

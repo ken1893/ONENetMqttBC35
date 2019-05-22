@@ -55,7 +55,7 @@ void delay_tms(__IO uint32_t nTime)
 void TaskTimer(void)
 {
 	if(TimingDelay != 0x00)
-  { 
+  {
     TimingDelay--;
   }
 	
@@ -118,7 +118,7 @@ void TaskTimer(void)
 void DelayUs(unsigned short us)
 {
 	uint32_t i; 
-	for(i=0;i<us;i++) 
+	for(i=0;i<us;i++)
 	{
 		__NOP();__NOP();__NOP();__NOP();__NOP();
 		__NOP();__NOP();__NOP();__NOP();__NOP();

@@ -63,6 +63,7 @@ void (*B_Task_Ptr)(void);     // State pointer B branch    100ms
 void (*C_Task_Ptr)(void);     // State pointer C branch
 
 void LED_GPIO_Configuration(void);
+static void WDG_Configuration(void);
 
 unsigned char *dataPtr = NULL;
 unsigned short timeCount = 0;	 // 发送间隔变量
@@ -82,6 +83,7 @@ void Hardware_Init(void)
 {
 	  LED_GPIO_Configuration();
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);	    // 中断控制器分组设置
+	  WDG_Configuration();
 
 	  SysTick_init();             // systick初始化
 
@@ -116,13 +118,35 @@ void LED_GPIO_Configuration(void)
 
 }
 
+static void WDG_Configuration(void)
+{
+  /* IWDG timeout equal to 280 ms (the timeout may varies due to LSI frequency
+     dispersion) -------------------------------------------------------------*/
+  /* Enable write access to IWDG_PR and IWDG_RLR registers */
+  IWDG_WriteAccessCmd(IWDG_WriteAccess_Enable);
+
+  /* IWDG counter clock: 40KHz(LSI) / 32 = 1.25 KHz */
+  IWDG_SetPrescaler(IWDG_Prescaler_256);
+
+  /* Set counter reload value to 349 */
+  IWDG_SetReload(349);
+
+  /* Reload IWDG counter */
+  IWDG_ReloadCounter();
+
+  /* Enable IWDG (the LSI oscillator will be enabled by hardware) */
+  //IWDG_Enable();
+}
+
 void Para_Init(void)
 {
 	Task1Flag = 0;
 	Task2Flag = 0;
 	Task3Flag = 0;
 	
-	Device[0][0] = 1;   // Device 0 ID 
+	dog_flag = 0;     
+	
+	Device[0][0] = 1;   // Device 0 ID
 }
 
 //-------------------------------------------------------------------------------
@@ -147,6 +171,9 @@ int main(void)
 	  A_Task_Ptr = &A1;
 	  B_Task_Ptr = &B1;
 	  C_Task_Ptr = &C1;
+		
+		/* Enable IWDG (the LSI oscillator will be enabled by hardware) */
+    //IWDG_Enable();
 
     while(1)
     {
@@ -224,6 +251,10 @@ void A2(void) // SPARE (not used)
 //-----------------------------------------------------------------
 {	
 
+	if(dog_flag == 0)     // if everything is OK 
+	{
+		//IWDG_ReloadCounter();     // wed dog
+	}
 	//-------------------
 	//the next time CpuTimer0 'counter' reaches Period value go to A3
 	A_Task_Ptr = &A3;
@@ -319,7 +350,7 @@ void C1(void) 	// Toggle
   {
 		timeCount = 0;
 					
-		UsartPrintf(USART_DEBUG, "OneNet_SendData\r\n");
+		//UsartPrintf(USART_DEBUG, "OneNet_SendData\r\n");
 					  
     OneNet_SendData();		// onenet 发送数据	
     BC35_Clear();
@@ -373,5 +404,7 @@ uint8_t SetLED(uint8_t ls)
 		
 		default:break;
 	}
+	
+	return 0;
 }
 

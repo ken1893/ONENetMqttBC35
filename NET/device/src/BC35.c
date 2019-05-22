@@ -97,8 +97,22 @@ _Bool BC35_SendCmd(char *cmd, char *res)
             if(strstr((const char *)BC35_buf, res) != NULL)		// 如果检索到关键词
             {
                 BC35_Clear();                                 // 清空缓存 成功反馈0
+							  ErrorTimes = 0;   // 故障代码清零
                 return 0;
             }
+						else if(strstr((const char *)BC35_buf, "ERROR") != NULL) // check error
+						{
+							
+							ErrorTimes++;
+							UsartPrintf(USART_DEBUG,"ERROR HAPPENED %d times,NEED TO Check!!!\r\n",ErrorTimes);
+							
+							if(ErrorTimes >= RESTARTTIMES)
+							{
+								UsartPrintf(USART_DEBUG,"ERROR CRASHED,RESTART NOW!!!!!!\r\n");
+								/* Enable IWDG (the LSI oscillator will be enabled by hardware) */
+                IWDG_Enable();    // restart
+							}
+						}
         }
         //delay_tms(1);
     }

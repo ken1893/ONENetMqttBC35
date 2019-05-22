@@ -107,7 +107,7 @@ _Bool OneNet_DevLink(void)
         UsartPrintf(USART_DEBUG, (char *)dataPtr);
         if(dataPtr != NULL)
         {
-            //			if(strstr((char *)dataPtr,"202000"))
+            //			if(strstr((char *)dataPtr,"20020000"))
             //			{
             status = 0;
             //			}
