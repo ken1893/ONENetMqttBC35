@@ -25,6 +25,14 @@ enum ActionType {
 	  STOP            // STOP                 9
 };
 
+// 网络状态
+enum NETSTA {
+    NONET,            // 无网络
+    SIMON = 1,        // sim卡上线    1
+	  ONENETON,         // onenet上线   2
+    ONENETOFF         // onenet离线   3
+};
+
 
 
 /* Exported types ------------------------------------------------------------*/
@@ -106,7 +114,8 @@ MAIN_EXT uint16_t Action_Flag;           // 动作标志
 
 MAIN_EXT uint8_t Device[12][2];     // 设备序列表    单个485设备限定设备连接数量12台，第一个参数设备ID，第二个参数设备类型 
 
-MAIN_EXT uint8_t NetStatus;         // 
+MAIN_EXT uint8_t RECNetStatus;      // 
+MAIN_EXT uint8_t NetStatus;
 
 MAIN_EXT uint8_t DeviceCount;       // 设备数量
 MAIN_EXT uint8_t askTimes;          // 问询序列，本设备采用分时闻讯方式获取从机数据

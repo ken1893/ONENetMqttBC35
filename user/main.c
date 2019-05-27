@@ -144,7 +144,8 @@ void Para_Init(void)
 	Task2Flag = 0;
 	Task3Flag = 0;
 	
-	dog_flag = 0;     
+	dog_flag = 0;   
+  NetStatus = NONET; 
 	
 	Device[0][0] = 1;   // Device 0 ID
 }
@@ -163,8 +164,12 @@ int main(void)
 
     BC35_Init();				           // 初始化bc35
 	
+	  BC35_Sockets();                // TCP
+	
     while(OneNet_DevLink())			   // 接入OneNET
 			delay_tms(50);
+		
+		NetStatus = ONENETON;     // 
 
 		// Tasks State-machine init
 	  Alpha_State_Ptr = &A0; 
@@ -250,10 +255,17 @@ void A1(void) // SPARE (not used)
 void A2(void) // SPARE (not used)
 //-----------------------------------------------------------------
 {	
-
 	if(dog_flag == 0)     // if everything is OK 
 	{
 		//IWDG_ReloadCounter();     // wed dog
+	}
+	
+	if(NetStatus == ONENETOFF)
+	{		
+		BC35_Sockets();                // TCP
+		while(OneNet_DevLink());			 // 接入OneNET
+		
+		NetStatus = ONENETON;
 	}
 	//-------------------
 	//the next time CpuTimer0 'counter' reaches Period value go to A3
@@ -346,7 +358,7 @@ void C1(void) 	// Toggle
 {
 	
 	//  循环发送字段  3second a time 
-  if(++timeCount >= 15)		// 发送间隔 60s
+  if(++timeCount >= 120)		// 发送间隔 60s
   {
 		timeCount = 0;
 					

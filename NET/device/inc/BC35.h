@@ -11,6 +11,8 @@
 
 void BC35_Init(void);
 
+void BC35_Sockets(void);
+
 void BC35_Clear(void);
 
 void BC35_SendData(unsigned char *data, unsigned short len);

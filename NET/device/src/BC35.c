@@ -102,15 +102,40 @@ _Bool BC35_SendCmd(char *cmd, char *res)
             }
 						else if(strstr((const char *)BC35_buf, "ERROR") != NULL) // check error
 						{
-							
-							ErrorTimes++;
-							UsartPrintf(USART_DEBUG,"ERROR HAPPENED %d times,NEED TO Check!!!\r\n",ErrorTimes);
-							
-							if(ErrorTimes >= RESTARTTIMES)
+							switch(NetStatus)
 							{
-								UsartPrintf(USART_DEBUG,"ERROR CRASHED,RESTART NOW!!!!!!\r\n");
-								/* Enable IWDG (the LSI oscillator will be enabled by hardware) */
-                IWDG_Enable();    // restart
+								case NONET:
+									ErrorTimes++;
+							    UsartPrintf(USART_DEBUG,"ERROR HAPPENED %d times,NEED TO Check!!!\r\n",ErrorTimes);
+							
+							    if(ErrorTimes >= RESTARTTIMES)
+							    {
+								    UsartPrintf(USART_DEBUG,"ERROR CRASHED,RESTART NOW!!!!!!\r\n");
+								    /* Enable IWDG (the LSI oscillator will be enabled by hardware) */
+                    //IWDG_Enable();    // restart
+							    }
+									break;
+								
+								case ONENETON:
+									UsartPrintf(USART_DEBUG,"ONENET IS OFF ,RECONNECT ONENET !!\r\n");
+								  NetStatus = ONENETOFF;
+									break;
+								
+								default:
+									break;
+							}
+						}
+						else if(strstr((const char *)BC35_buf, "NSOCLI") != NULL) // close socket
+						{
+							switch(NetStatus)
+							{								
+								case ONENETON:
+									UsartPrintf(USART_DEBUG,"ONENET IS OFF ,RECONNECT ONENET !!\r\n");
+								  NetStatus = ONENETOFF;
+									break;
+								
+								default:
+									break;
 							}
 						}
         }
@@ -175,22 +200,27 @@ unsigned char *BC35_GetIPD(unsigned short timeOut)
 					
 					if(strstr((char *)BC35_buf, ",6002,") != NULL)
 					{
-						NetStatus = 0;      // receive data
+						RECNetStatus = 0;      // receive data
 						ptrIPD = strstr((char *)BC35_buf, ",6002,");
 					}
 					else if(strstr((char *)BC35_buf, "+NSONMI:") != NULL)
 					{
-						NetStatus = 1;      // receive data flag
+						RECNetStatus = 1;      // receive data flag
 						ptrIPD = strstr((char *)BC35_buf, "+NSONMI:");
+					}
+					else if(strstr((char *)BC35_buf, "+NSOCL:") != NULL)
+					{
+						RECNetStatus = 2;      // receive data flag
+						ptrIPD = strstr((char *)BC35_buf, "+NSOCL:");      // close socket
 					}
 					else 
 					{
 						UsartPrintf(USART_DEBUG, "\"IPD\" not found\r\n");
-						NetStatus = 0xff;				  // 处理完成
+						RECNetStatus = 0xff;				  // 处理完成
 						return NULL;
 					}
 					  
-					switch(NetStatus)
+					switch(RECNetStatus)
 				  {
 							case 0:     // 等待连接
 								  SetLED(1);
@@ -201,7 +231,7 @@ unsigned char *BC35_GetIPD(unsigned short timeOut)
                   UsartPrintf(USART_DEBUG, "接收完成\r\n");		
 									
 							    return (unsigned char *)(ptrIPD);
-                  NetStatus = 0xff;				  // 处理完成			
+                  RECNetStatus = 0xff;				  // 处理完成			
 								break;
 							
 									// +NSONMI:2,47
@@ -224,7 +254,20 @@ unsigned char *BC35_GetIPD(unsigned short timeOut)
 									delay_tms(50);
 										
 									UsartPrintf(USART_DEBUG,"Receive data ready!\r\n");
-									NetStatus = 0xff;				  // 处理完成
+									RECNetStatus = 0xff;				  // 处理完成
+								break;
+									
+							case 2:
+								switch(NetStatus)
+							  {								
+								  case ONENETON:
+									  UsartPrintf(USART_DEBUG,"ONENET IS OFF ,RECONNECT ONENET !!\r\n");
+								    NetStatus = ONENETOFF;
+									  break;
+								
+								  default:
+									  break;
+							  }
 								break;
 							
 							default:
@@ -331,7 +374,11 @@ void BC35_Init(void)
         BC35_SendCmd("AT+NSOCL=1\r\n","OK");
         delay_tms(100);
     }
+		
+		NetStatus = SIMON;     // net状态，设备已注册
+    UsartPrintf(USART_DEBUG, "=====BC35 Init OK=====\r\n");
 
+		/*
     UsartPrintf(USART_DEBUG, "-----------------\r\n");
     UsartPrintf(USART_DEBUG, BC35_ONENET_INFO);
     while(BC35_SendCmd(BC35_ONENET_INFO,"OK"))				// 连接到服务器
@@ -348,7 +395,27 @@ void BC35_Init(void)
         }
         delay_tms(50);
     }
-    UsartPrintf(USART_DEBUG, "=====BC35 Init OK=====\r\n");
+		*/
+}
+
+void BC35_Sockets(void)
+{
+	UsartPrintf(USART_DEBUG, "-----------------\r\n");
+    UsartPrintf(USART_DEBUG, BC35_ONENET_INFO);
+    while(BC35_SendCmd(BC35_ONENET_INFO,"OK"))				// 连接到服务器
+    {
+        UsartPrintf(USART_DEBUG, "AT+NSOCL=1\r\n");
+        BC35_SendCmd("AT+NSOCL=1\r\n","OK");
+        delay_tms(50);
+        UsartPrintf(USART_DEBUG, "AT+NSOCR=STREAM,6,35001,1\r\n");
+        while(BC35_SendCmd("AT+NSOCR=STREAM,6,35001,1\r\n","OK"))	// 必须为单连接，不然平台IP都连不上
+        {
+            UsartPrintf(USART_DEBUG, "AT+NSOCL=1\r\n");
+            BC35_SendCmd("AT+NSOCL=1\r\n","OK");
+            delay_tms(50);
+        }
+        delay_tms(50);
+    }
 }
 
 //==========================================================
