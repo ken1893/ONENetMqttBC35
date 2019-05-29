@@ -168,8 +168,6 @@ int main(void)
 	
     while(OneNet_DevLink())			   // 接入OneNET
 			delay_tms(50);
-		
-		NetStatus = ONENETON;     // 
 
 		// Tasks State-machine init
 	  Alpha_State_Ptr = &A0; 
@@ -260,12 +258,11 @@ void A2(void) // SPARE (not used)
 		//IWDG_ReloadCounter();     // wed dog
 	}
 	
-	if(NetStatus == ONENETOFF)
-	{		
-		BC35_Sockets();                // TCP
-		while(OneNet_DevLink());			 // 接入OneNET
-		
-		NetStatus = ONENETON;
+	if(NetStatus == ONENETOFF)  // 接入OneNET
+	{		        
+			BC35_Sockets();     // TCP
+			delay_tms(20);
+			OneNet_DevLink();
 	}
 	//-------------------
 	//the next time CpuTimer0 'counter' reaches Period value go to A3
@@ -358,7 +355,7 @@ void C1(void) 	// Toggle
 {
 	
 	//  循环发送字段  3second a time 
-  if(++timeCount >= 120)		// 发送间隔 60s
+  if(++timeCount >= 70)		// 发送间隔 60s
   {
 		timeCount = 0;
 					

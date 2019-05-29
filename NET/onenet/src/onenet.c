@@ -93,7 +93,7 @@ _Bool OneNet_DevLink(void)
    //				will_retain：消息推送标志
    //				mqttPacket：包指针
 
-    if(MQTT_PacketConnect(PROID, AUTH_INFO, DEVID, 256, 0, MQTT_QOS_LEVEL0, NULL, NULL, 0, &mqttPacket) == 0)
+    if(MQTT_PacketConnect(PROID, AUTH_INFO, DEVID, 25, 0, MQTT_QOS_LEVEL0, NULL, NULL, 0, &mqttPacket) == 0)
     {
         ClearRAM((u8 *)HTTP_BufHEX,500);
         http_len = mqtt_connect_message(HTTP_BufHEX,PROID,AUTH_INFO,DEVID);
@@ -110,6 +110,7 @@ _Bool OneNet_DevLink(void)
             //			if(strstr((char *)dataPtr,"20020000"))
             //			{
             status = 0;
+					  NetStatus = ONENETON;
             //			}
             //			if(MQTT_UnPacketRecv(dataPtr) == MQTT_PKT_CONNACK)
             //			{

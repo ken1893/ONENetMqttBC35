@@ -35,6 +35,7 @@
 unsigned char BC35_buf[128];        // 接收模块的反馈信息
 
 unsigned short BC35_cnt = 0, BC35_cntPre = 0;
+uint8_t SendType = 0; 
 
 //==========================================================
 //	函数名称：	BC35_Clear
@@ -74,134 +75,91 @@ _Bool BC35_WaitRecive(void)
     return REV_WAIT;							// 返回接收未完成标志
 }
 
-//==========================================================
-//	函数名称：	BC35_SendCmd
-//	函数功能：	发送命令
-//	入口参数：	cmd：命令
-//				res：需要检查的返回指令
-//	返回参数：	0-成功	1-失败
-//	说明：		
-//==========================================================
-_Bool BC35_SendCmd(char *cmd, char *res)
-{
-    unsigned char timeOut = 252;    // 
 
-    Usart_SendString(USART_BC35, (unsigned char *)cmd, strlen((const char *)cmd));
+//==========================================================
+//	函数名称：	BC35_RECDel
+//	函数功能：	处理接收返回值
+//	入口参数：	无
+//	返回参数：	REV_OK-接收完成		REV_WAIT-接收超时未完成
+//	说明：		循环调用检测是否接收完成
+//==========================================================
+_Bool BC35_RECDel(char *res)
+{
+	char *ptrIPD;
+	char *RecNum;
+  int num;
 	
-    delay_tms(20);
-    while(timeOut--)
-    {
-        if(BC35_WaitRecive() == REV_OK)					// 如果收到数据
+	char cmdbuf[20];
+  memset(cmdbuf, 0, sizeof(cmdbuf));
+	
+	if(BC35_WaitRecive() == REV_OK)					// 如果收到数据
+  {
+		UsartPrintf(USART_DEBUG,"NetStatus is %d; \n",NetStatus);
+		switch(SendType)
+		{
+			case SCMD:
+				UsartPrintf(USART_DEBUG,"SCMD REQUEST");          // print usartdebug
+				UsartPrintf(USART_DEBUG,(char *)BC35_buf);        // print usartdebug
+			
+        if(strstr((const char *)BC35_buf, res) != NULL)		// 如果检索到关键词
         {
-            UsartPrintf(USART_DEBUG,(char *)BC35_buf);        // print usartdebug
-            if(strstr((const char *)BC35_buf, res) != NULL)		// 如果检索到关键词
-            {
-                BC35_Clear();                                 // 清空缓存 成功反馈0
-							  ErrorTimes = 0;   // 故障代码清零
-                return 0;
-            }
-						else if(strstr((const char *)BC35_buf, "ERROR") != NULL) // check error
-						{
-							switch(NetStatus)
-							{
-								case NONET:
-									ErrorTimes++;
-							    UsartPrintf(USART_DEBUG,"ERROR HAPPENED %d times,NEED TO Check!!!\r\n",ErrorTimes);
+					BC35_Clear();                                   // 清空缓存 成功反馈0
+					ErrorTimes = 0;   // 故障代码清零
+					SendType = SINI;
+          return 0;
+        }
+				else if(strstr((const char *)BC35_buf, "ERROR") != NULL) // check error
+				{
+					switch(NetStatus)
+					{
+						case NONET:
+							ErrorTimes++;
+							UsartPrintf(USART_DEBUG,"ERROR HAPPENED %d times,NEED TO Check!!!\r\n",ErrorTimes);
 							
-							    if(ErrorTimes >= RESTARTTIMES)
-							    {
-								    UsartPrintf(USART_DEBUG,"ERROR CRASHED,RESTART NOW!!!!!!\r\n");
-								    /* Enable IWDG (the LSI oscillator will be enabled by hardware) */
-                    //IWDG_Enable();    // restart
-							    }
-									break;
-								
-								case ONENETON:
-									UsartPrintf(USART_DEBUG,"ONENET IS OFF ,RECONNECT ONENET !!\r\n");
-								  NetStatus = ONENETOFF;
-									break;
-								
-								default:
-									break;
+							if(ErrorTimes >= RESTARTTIMES)
+							{
+								 UsartPrintf(USART_DEBUG,"ERROR CRASHED,RESTART NOW!!!!!!\r\n");
 							}
-						}
-						else if(strstr((const char *)BC35_buf, "NSOCLI") != NULL) // close socket
-						{
-							switch(NetStatus)
-							{								
-								case ONENETON:
-									UsartPrintf(USART_DEBUG,"ONENET IS OFF ,RECONNECT ONENET !!\r\n");
-								  NetStatus = ONENETOFF;
-									break;
+							break;
 								
-								default:
-									break;
-							}
-						}
-        }
-        //delay_tms(1);
-    }
-    return 1;
-}
-
-//==========================================================
-//	函数名称：	BC35_SendData
-//	函数功能：	发送数据
-//	入口参数：	data：数据
-//			 len：长度
-//	返回参数：	无
-//	说明：		
-//==========================================================
-void BC35_SendData(unsigned char *data, unsigned short len)
-{
-    char HTTP_BufSendAT[500];
-    memset(HTTP_BufSendAT, 0, sizeof(HTTP_BufSendAT));
-    sprintf((char*)(HTTP_BufSendAT),"%s,%d,%s\r\n","AT+NSOSD=2",len,(char *)data);
-    UsartPrintf(USART_DEBUG,(char *)HTTP_BufSendAT);
-    if(!BC35_SendCmd(HTTP_BufSendAT, "OK"))				//收到‘>’时可以发送数据
-    {
-        delay_tms(50);
-        Usart_SendString(USART_BC35,"AT+NSORF=2,100\r\n", 16);	//发送设备连接请求数据
-        if(BC35_WaitRecive() == REV_OK)							//如果收到数据
-        {
-            UsartPrintf(USART_DEBUG,(char *)BC35_buf);
-        }
-        delay_tms(50);
-        //		UsartPrintf(USART_DEBUG,(char *)HTTP_BufSend);
-        UsartPrintf(USART_DEBUG,"Send OK\r\n");
-        //		BC35_SendCmd("AT+QIRD=0,1500\r\n","+QIRD:");
-    }
-}
-
-//==========================================================
-//	函数名称：	BC35_GetIPD
-//	函数功能：	获取平台返回的数据
-//	入口参数：	timeOut等待的时间(乘以10ms)
-//	返回参数：	平台返回的原始数据
-//	说明：		不同网络设备返回的格式不同，需要去调试
-//==========================================================
-unsigned char *BC35_GetIPD(unsigned short timeOut)
-{
-    char *ptrIPD;
-	  char *RecNum;
-  	int num;
-	
-	  char cmdbuf[20];
-    memset(cmdbuf, 0, sizeof(cmdbuf));
-		
-	  //strcat(buf, text);
-	
-    do
-    {
-        if(BC35_WaitRecive() == REV_OK)						// 如果接收完成
-        {
-					UsartPrintf(USART_DEBUG,"receive signal is:\r\n");
+							case ONENETON:
+							  UsartPrintf(USART_DEBUG,"ONENET IS OFF ,RECONNECT ONENET !!\r\n");
+								NetStatus = ONENETOFF;
+							break;
+								
+							default:
+							break;
+					}
+				}
+				else if(strstr((const char *)BC35_buf, "NSOCLI") != NULL) // close socket
+				{
+					switch(NetStatus)
+					{								
+						case ONENETON:
+							UsartPrintf(USART_DEBUG,"ONENET IS OFF ,RECONNECT ONENET !!\r\n");
+							NetStatus = ONENETOFF;
+						break;
+								
+						default:
+						break;
+					}
+				}
+				break;
+				
+			case SDATA:
+				UsartPrintf(USART_DEBUG,"SDATA REQUEST IS:\r\n"); // print usartdebug
+				UsartPrintf(USART_DEBUG,(char *)BC35_buf);        // print usartdebug
+				break;
+			
+			case SGETIPD:
+				  UsartPrintf(USART_DEBUG,"SGETIPD REQUEST IS:\r\n"); // print usartdebug
           UsartPrintf(USART_DEBUG,(char *)BC35_buf);
 					
 					if(strstr((char *)BC35_buf, ",6002,") != NULL)
 					{
 						RECNetStatus = 0;      // receive data
 						ptrIPD = strstr((char *)BC35_buf, ",6002,");
+						
 					}
 					else if(strstr((char *)BC35_buf, "+NSONMI:") != NULL)
 					{
@@ -230,15 +188,15 @@ unsigned char *BC35_GetIPD(unsigned short timeOut)
 									UsartPrintf(USART_DEBUG,(char *)BC35_buf);		
                   UsartPrintf(USART_DEBUG, "接收完成\r\n");		
 									
-							    return (unsigned char *)(ptrIPD);
-                  RECNetStatus = 0xff;				  // 处理完成			
+							    //return (unsigned char *)(ptrIPD);
+							    
+                  RECNetStatus = 0xff;				  // 处理完成		
+							    return 1;
 								break;
 							
 									// +NSONMI:2,47
 							case 1:      // 接收
-								  
 							    SetLED(0);
-					
 									RecNum = ptrIPD + 10;
 									num = atoi(RecNum);
 									UsartPrintf(USART_DEBUG, "RecNUM:%s;intnum:%d\r\n",RecNum,num);
@@ -247,6 +205,7 @@ unsigned char *BC35_GetIPD(unsigned short timeOut)
 										
 									Usart_SendString(USART_BC35,(unsigned char *)cmdbuf, 15);	//发送设备连接请求数据
 										
+							    delay_tms(50);
 									if(BC35_WaitRecive() == REV_OK)							//如果收到数据
 									{
 											UsartPrintf(USART_DEBUG,(char *)BC35_buf);
@@ -273,7 +232,101 @@ unsigned char *BC35_GetIPD(unsigned short timeOut)
 							default:
 								break;
 						}
-        }
+
+				break;
+			
+			default:break;
+		}				
+  }
+	SendType = SINI;
+	
+	return 1;
+}
+
+//==========================================================
+//	函数名称：	BC35_SendCmd
+//	函数功能：	发送命令
+//	入口参数：	cmd：命令
+//				res：需要检查的返回指令
+//	返回参数：	0-成功	1-失败
+//	说明：		
+//==========================================================
+_Bool BC35_SendCmd(char *cmd, char *res)
+{
+    unsigned char timeOut = 252;    // 
+
+    Usart_SendString(USART_BC35, (unsigned char *)cmd, strlen((const char *)cmd));
+	
+    delay_tms(20);
+    while(timeOut--)
+    {
+			SendType = SCMD;
+			if(BC35_RECDel(res) == 0)
+				return 0;
+			
+        //delay_tms(1);
+    }
+    return 1;
+}
+
+//==========================================================
+//	函数名称：	BC35_SendData
+//	函数功能：	发送数据
+//	入口参数：	data：数据
+//			 len：长度
+//	返回参数：	无
+//	说明：		
+//==========================================================
+void BC35_SendData(unsigned char *data, unsigned short len)
+{
+    char HTTP_BufSendAT[500];
+    memset(HTTP_BufSendAT, 0, sizeof(HTTP_BufSendAT));
+    sprintf((char*)(HTTP_BufSendAT),"%s,%d,%s\r\n","AT+NSOSD=2",len,(char *)data);
+    UsartPrintf(USART_DEBUG,(char *)HTTP_BufSendAT);
+	
+    if(!BC35_SendCmd(HTTP_BufSendAT, "OK"))				//收到‘>’时可以发送数据
+    {
+        delay_tms(50);
+        Usart_SendString(USART_BC35,"AT+NSORF=2,100\r\n", 16);	//发送设备连接请求数据
+			  delay_tms(50);
+			  SendType = SDATA;
+			  BC35_RECDel((char *)data);
+
+        delay_tms(50);
+        //		UsartPrintf(USART_DEBUG,(char *)HTTP_BufSend);
+        UsartPrintf(USART_DEBUG,"DATA Send OK\r\n");
+        //		BC35_SendCmd("AT+QIRD=0,1500\r\n","+QIRD:");
+    }
+}
+
+//==========================================================
+//	函数名称：	BC35_GetIPD
+//	函数功能：	获取平台返回的数据
+//	入口参数：	timeOut等待的时间(乘以10ms)
+//	返回参数：	平台返回的原始数据
+//	说明：		不同网络设备返回的格式不同，需要去调试
+//==========================================================
+unsigned char *BC35_GetIPD(unsigned short timeOut)
+{
+    char *ptrIPD;
+	  //char *RecNum;
+  	//int num;
+	
+	  //char cmdbuf[20];
+    //memset(cmdbuf, 0, sizeof(cmdbuf));
+		
+	  //strcat(buf, text);
+	  SendType = SGETIPD;
+	
+    do
+    {
+			if(BC35_RECDel(ptrIPD))
+			{
+				ptrIPD = "connected";
+				return (unsigned char *)(ptrIPD);
+			}
+			//
+        
         delay_tms(1);												// 延时等待
     }while(timeOut--);
 		
