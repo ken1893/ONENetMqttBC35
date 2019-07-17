@@ -95,7 +95,7 @@ void ModbusPro(unsigned char com);
 // MODBUS CMD MODE 
 void Read_InputRegister(void);     // 读输入寄存器
 void Read_HoldingRegister(void);   // 讀保持寄存器
-void Write_SingleHolding(void);    // 写单个保持寄存器   0x06
+void Write_SingleHolding(uint8_t suquence,uint8_t cmd,uint16_t RegAddr,uint16_t val);    // 写单个保持寄存器   0x06
 void Write_MultiHolding(void);	   // 写多个保持寄存器   
 
 void Send_CommonReg(uint8_t* pBuffer, uint8_t Num);	   // 发送装载数据并计算校验
@@ -139,7 +139,6 @@ void UartDeal(uint8_t suquence)
 	
 	RxIntDis();			  // 关接收中断
 		
-	
   switch(RxBuf[1])
 	{
 		case 0x04:                    // 获取输入寄存器
@@ -271,6 +270,12 @@ void Ask_pros(uint8_t suquence)
 }
 
 
+void SW_Con(uint8_t suquence,uint8_t sta)
+{
+	Write_SingleHolding(suquence,0x06,0x0000,(uint16_t)sta);
+}
+
+
 /********************************************************************************
 *  ModbusPro(unsigned char com)
 *  函数功能: 处理串行modbus协议
@@ -288,7 +293,7 @@ void ModbusPro(unsigned char com)
 			break;
 			
 			case 0x06:                 // 寫單個保持寄存器
-				Write_SingleHolding();
+				//Write_SingleHolding();
 			break; 
 
 			case 0x10:                 // 写多个寄存器
@@ -323,6 +328,7 @@ void Read_InputRegister(void)
 		case 1:
 			break;
 	}
+	
 	UsartPrintf(USART_DEBUG, "{\"PowerAll\":%d,\"Temp\":%d,\"Power\":%d,\"Vol\":%d,\"Cur\":%d,\"Sta\":3}",SinglePhase[0].RegS.EnegerL,SinglePhase[0].RegS.Temp,SinglePhase[0].RegS.Power,SinglePhase[0].RegS.Volt,SinglePhase[0].RegS.Current);
 	UsartPrintf(USART_DEBUG, "Input successed:%d,\r\n",RxBuf[2]);
 	UsartPrintf(USART_DEBUG,(char *)RxBuf);
@@ -336,7 +342,6 @@ void Read_InputRegister(void)
 void Read_HoldingRegister()
 {
 	
-	
 	switch(RxBuf[0])
 	{
 		case 1:
@@ -349,9 +354,57 @@ void Read_HoldingRegister()
 *  Write_SingleHolding(void)
 *  函数功能: 写單個保持寄存器成功
 *********************************************************************************/
-void Write_SingleHolding()
+void Write_SingleHolding(uint8_t suquence,uint8_t cmd,uint16_t RegAddr,uint16_t val)
 {
+	uint8_t i;
+	struct crcstruct temp;
+	
+	#ifdef RS485
+		UARTSEND;
+	#endif
+	
+	TxBuf[0] = Device[suquence][0];   // id
+	
+	TxBuf[1] = cmd;   // cmd  input 输入寄存器
+	
+	TxBuf[2] = (RegAddr >> 8)&0xff;   // start add
+	TxBuf[3] = RegAddr & 0xff;   
+	
+	switch(Device[suquence][1])
+	{
+		case 0:              // 智能开关设备
+			TxBuf[4] = (val >> 8)&0xff;   // control  switch or register
+	    TxBuf[5] = val & 0xff;
+			break;
+		
+		case 1:
+			break;
+		
+		default:break;
+	}
+	temp = crc16(TxBuf,6);
+	
+	TxBuf[6] = temp.crcH;
+	TxBuf[7] = temp.crcL;
+	  
+	TxLen = 8;
+	
+	TxEnable_Flag = 1;       // 允许发送
+
+	if(TxEnable_Flag == 1){
+		for(i=0;i< TxLen;i++){
+			USART_SendData(USART_485,TxBuf[i]);	
+			while(USART_GetFlagStatus(USART_485, USART_FLAG_TXE) == RESET);
+		}
+		#ifdef RS485
+		USART_ITConfig(USART_485,USART_IT_TC,ENABLE);           // enable发送完成中断	
+		#endif
+		
+		TxEnable_Flag = 0;       // 发送完毕，关闭发送使能
+	}
+	
 	UsartPrintf(USART_DEBUG, "setting successed\r\n");
+	
 }
 
 /********************************************************************************

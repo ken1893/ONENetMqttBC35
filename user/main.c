@@ -41,20 +41,20 @@ void A0(void);	//state A0
 void B0(void);	//state B0
 void C0(void);	//state C0
 
-// A branch states
-void A1(void);	//state A1
-void A2(void);	//state A2
-void A3(void);	//state A3
+// A branch states  10ms 
+void A1(void);	//state A1   deal onenet REC control
+void A2(void);	//state A2   onenet reconnect
+void A3(void);	//state A3   
 
-// B branch states
-void B1(void);	//state B1
+// B branch states   100ms
+void B1(void);	//state B1   (receive)SERIALS COMmunication
 void B2(void);	//state B2
 void B3(void);	//state B3
 
 // C branch states
-void C1(void);	//state C1
-void C2(void);	//state C2
-void C3(void);	//state C3
+void C1(void);	//state C1    timing onenet send
+void C2(void);	//state C2    485 ask the terminal
+void C3(void);	//state C3    strategy rules
 
 // Variable declarations
 void (*Alpha_State_Ptr)(void);     // Base States pointer
@@ -88,7 +88,7 @@ void Hardware_Init(void)
 	  SysTick_init();             // systick初始化
 
     Usart1_Init(115200);        // 串口1，打印信息用
-    Usart3_Init(9600);          // 串口2，驱动BC35用
+    Usart3_Init(9600);        // 串口2，驱动BC35用
 	
     Usart2_Init(9600);        // 串口2，485主模式 
 	  DE_Init();       // 485 DE
@@ -102,7 +102,7 @@ void Hardware_Init(void)
 * Input          : None
 * Output         : None
 * Return         : None
-* Attention		 : None
+* Attention		   : None
 *******************************************************************************/
 void LED_GPIO_Configuration(void)
 {
@@ -144,10 +144,14 @@ void Para_Init(void)
 	Task2Flag = 0;
 	Task3Flag = 0;
 	
+	Flag_Poweron = 0;  // 刚刚上电标志
+	
 	dog_flag = 0;   
   NetStatus = NONET; 
 	
-	Device[0][0] = 1;   // Device 0 ID
+	MODE = BOOTON;
+	
+	Device[0][0] = 1;   // Device 0 ID 
 }
 
 //-------------------------------------------------------------------------------
@@ -236,7 +240,7 @@ void C0(void)
 //	A - TASKS (executed in every 10 msec)
 //=================================================================================
 //--------------------------------------------------------
-void A1(void) // SPARE (not used)
+void A1(void) // SPARE (not used)  deal onenet REC
 //--------------------------------------------------------
 {
   dataPtr = BC35_GetIPD(10);
@@ -250,19 +254,19 @@ void A1(void) // SPARE (not used)
 }
 
 //-----------------------------------------------------------------
-void A2(void) // SPARE (not used)
+void A2(void) // SPARE (onenet reconnect) 
 //-----------------------------------------------------------------
 {	
 	if(dog_flag == 0)     // if everything is OK 
 	{
-		//IWDG_ReloadCounter();     // wed dog
+		// IWDG_ReloadCounter();     // wed dog
 	}
 	
 	if(NetStatus == ONENETOFF)  // 接入OneNET
 	{		        
-			BC35_Sockets();     // TCP
-			delay_tms(20);
-			OneNet_DevLink();
+			BC35_Sockets();         // TCP
+			delay_tms(20);          
+			OneNet_DevLink();       
 	}
 	//-------------------
 	//the next time CpuTimer0 'counter' reaches Period value go to A3
@@ -289,7 +293,7 @@ void A3(void) // SPARE (not used)
 //----------------------------------- USER ----------------------------------------
 
 //----------------------------------------
-void B1(void) // SERIALS COM
+void B1(void) // SERIALS COMmunication
 //----------------------------------------
 {
 	// deal the uart com
@@ -350,12 +354,11 @@ void B3(void) //  SPARE
 //--------------------------------- USER ------------------------------------------
 
 //----------------------------------------
-void C1(void) 	// Toggle 
+void C1(void) 	// timing onenet send
 //----------------------------------------
 {
-	
 	//  循环发送字段  3second a time 
-  if(++timeCount >= 70)		// 发送间隔 60s
+  if(++timeCount >= 30)		// 发送间隔 60s
   {
 		timeCount = 0;
 					
@@ -375,10 +378,19 @@ void C1(void) 	// Toggle
 }
 
 //----------------------------------------
-void C2(void) //  SPARE
+void C2(void) //  SPARE  485 ask the terminal
+	//strategy rules
 //----------------------------------------
 {
-	Ask_pros(0);       // ask for terminal
+	if(Flag_Poweron == 0)
+	{
+		SW_Con(0,1);
+		Flag_Poweron = 1;
+	}
+	else 
+	{
+		Ask_pros(0);       // ask for terminal
+	}
 	//-----------------
 	//the next time CpuTimer2 'counter' reaches Period value go to C3
 	C_Task_Ptr = &C3;	
@@ -387,9 +399,10 @@ void C2(void) //  SPARE
 
 
 //-----------------------------------------
-void C3(void) //  SPARE
+void C3(void) //  SPARE  
 //-----------------------------------------
 {
+	
 	//-----------------
 	//the next time CpuTimer2 'counter' reaches Period value go to C1
 	C_Task_Ptr = &C1;	

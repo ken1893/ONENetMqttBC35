@@ -126,6 +126,14 @@ _Bool BC35_RECDel(char *res)
 							  UsartPrintf(USART_DEBUG,"ONENET IS OFF ,RECONNECT ONENET !!\r\n");
 								NetStatus = ONENETOFF;
 							break;
+							
+							case ONENETOFF:
+								ErrorTimes++;
+							if(ErrorTimes >= RESTARTTIMES)
+							{
+								 UsartPrintf(USART_DEBUG,"ERROR need break out,RESTART NOW!!!!!!\r\n");
+							}
+								break;
 								
 							default:
 							break;
@@ -364,7 +372,7 @@ void BC35_Init(void)
     UsartPrintf(USART_DEBUG, "3.AT+CGSN=1\r\n");// 获取IMEI
     while(BC35_SendCmd("AT+CGSN=1\r\n", "OK"))
         delay_tms(50);
-    
+		
 		//                9                   
     BC35_Clear();
 		//                                            查询
@@ -420,6 +428,22 @@ void BC35_Init(void)
     UsartPrintf(USART_DEBUG, "8.AT+CGPADDR\r\n");     // 查询模块获取的IP
     BC35_SendCmd("AT+CGPADDR\r\n","OK");              // 激活状态
     delay_tms(50);
+		
+		//UsartPrintf(USART_DEBUG, "4.AT+CPSMS=1,,,01100010,00000010\r\n");// 关闭PSM
+    //while(BC35_SendCmd("AT+CPSMS=1,,,01100010,00000010\r\n", "OK"))
+		
+		UsartPrintf(USART_DEBUG, "4.AT+CEDRXS=0,5\r\n");// 关闭eDRX
+    while(BC35_SendCmd("AT+CEDRXS=0,5\r\n", "OK"))
+        delay_tms(50);
+		
+		UsartPrintf(USART_DEBUG, "4.AT+CPSMS=0\r\n");// 关闭PSM
+    while(BC35_SendCmd("AT+CPSMS=0\r\n", "OK"))
+        delay_tms(50);
+		
+		//UsartPrintf(USART_DEBUG, "4.AT+NPTWEDRXS=1,5,0001,0010\r\n");// eDRX
+    //while(BC35_SendCmd("AT+NPTWEDRXS=1,5,0001,0010\r\n", "OK"))
+        //delay_tms(50);
+		
 
     UsartPrintf(USART_DEBUG, "9.AT+NSOCR=STREAM,6,35001,1\r\n");        //  TCP
     while(BC35_SendCmd("AT+NSOCR=STREAM,6,35001,1\r\n","OK"))           //必须为单连接，不然平台IP都连不上
@@ -466,7 +490,11 @@ void BC35_Sockets(void)
             UsartPrintf(USART_DEBUG, "AT+NSOCL=1\r\n");
             BC35_SendCmd("AT+NSOCL=1\r\n","OK");
             delay_tms(50);
+					  if(ErrorTimes > 10)
+						{ErrorTimes = 0;return;}
         }
+				if(ErrorTimes > 10)
+						{ErrorTimes = 0;return;}
         delay_tms(50);
     }
 }

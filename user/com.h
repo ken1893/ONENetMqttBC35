@@ -81,6 +81,7 @@ COM_EXT void  TxISRHandler(void);
 COM_EXT void UartDeal(uint8_t suquence);     // 处理接收数据
 
 COM_EXT void Ask_pros(uint8_t suquence);     // 设备查询
+COM_EXT void SW_Con(uint8_t suquence,uint8_t sta);  // 开关控制
 
 COM_EXT void EndRequest(uint8_t deviceid,uint16_t cmd,uint16_t value);
 

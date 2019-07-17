@@ -34,6 +34,12 @@ enum NETSTA {
 };
 
 
+enum BOOTMODE{
+	BOOTOFF,
+	BOOTON = 1,         // 检测到有新的终端设备上线时默认为打开
+	BOOTDONE
+};
+
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
@@ -106,24 +112,26 @@ typedef struct
 	uint8_t  PeakP;	                 
 } Meter_TypeDef;
 
-
 MAIN_EXT Meter_TypeDef Meter_Data;
+MAIN_EXT uint8_t Device[12][3];     // 设备序列表    单个485设备限定设备连接数量12台，第一个参数设备ID，第二个参数设备类型,第三个参数设备联网状态
+MAIN_EXT uint8_t DeviceCount;       // 设备数量 notused
+
+MAIN_EXT uint16_t MODE;    // 工作模式
+MAIN_EXT uint8_t Flag_Poweron;   // 上电标志
 
 MAIN_EXT uint16_t RecordAction;          // 记录上一个动作
 MAIN_EXT uint16_t Action_Flag;           // 动作标志
 
-MAIN_EXT uint8_t Device[12][2];     // 设备序列表    单个485设备限定设备连接数量12台，第一个参数设备ID，第二个参数设备类型 
 
-MAIN_EXT uint8_t RECNetStatus;      // 
-MAIN_EXT uint8_t NetStatus;
-
-MAIN_EXT uint8_t DeviceCount;       // 设备数量
-MAIN_EXT uint8_t askTimes;          // 问询序列，本设备采用分时闻讯方式获取从机数据
-
-MAIN_EXT uint8_t ErrorTimes;        // 故障重启次数
+MAIN_EXT uint8_t RECNetStatus;      // BC35 REC status
+MAIN_EXT uint8_t NetStatus;         // ONENET STATUS
+MAIN_EXT uint8_t ErrorTimes;        // 故障重启次数,记录10次重启
 MAIN_EXT uint8_t dog_flag;          // 喂狗标志
 
-MAIN_EXT uint8_t SetLED(uint8_t ls);    // 
+MAIN_EXT uint8_t askTimes;          // ?? 问询序列，本设备采用分时闻讯方式获取从机数据
+
+
+MAIN_EXT uint8_t SetLED(uint8_t ls);    // LED for status
 
 #ifdef DELAY_GLOBALS
 #define DELAY_EXT
@@ -135,7 +143,6 @@ DELAY_EXT __IO uint32_t TimingDelay;
 DELAY_EXT __IO uint16_t TaskSystic;
 
 DELAY_EXT void TaskTimer(void);
-
 
 #endif
 

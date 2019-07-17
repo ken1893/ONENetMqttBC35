@@ -1,10 +1,6 @@
 #ifndef _BC35_H_
 #define _BC35_H_
 
-
-
-
-
 #define REV_OK		0	//接收完成标志
 #define REV_WAIT	1	//接收未完成标志
 
@@ -12,8 +8,8 @@
 // 网络状态
 enum SENDT {
 	  SINI,
-    SCMD = 1,            // 
-    SDATA = 2,        // 
+    SCMD = 1,       // 
+    SDATA = 2,      // 
 	  SGETIPD         // 
 };
 

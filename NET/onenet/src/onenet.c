@@ -37,10 +37,12 @@
 #define PROID   "204115"
 
 //#define AUTH_INFO	"csicbc35"
-#define AUTH_INFO	"czfrBC35M2"
+//#define AUTH_INFO	"czfrBC35M2"    // M2
+#define AUTH_INFO "czfrBC35M1"  // M1
 
 //#define DEVID		"41058860"
-#define DEVID   "514552697"
+//#define DEVID   "514552697"   // M2
+#define DEVID "514531952"   // M1
 
 
 extern unsigned char esp8266_buf[128];
@@ -93,7 +95,7 @@ _Bool OneNet_DevLink(void)
    //				will_retain：消息推送标志
    //				mqttPacket：包指针
 
-    if(MQTT_PacketConnect(PROID, AUTH_INFO, DEVID, 25, 0, MQTT_QOS_LEVEL0, NULL, NULL, 0, &mqttPacket) == 0)
+    if(MQTT_PacketConnect(PROID, AUTH_INFO, DEVID, 255, 0, MQTT_QOS_LEVEL0, NULL, NULL, 0, &mqttPacket) == 0)
     {
         ClearRAM((u8 *)HTTP_BufHEX,500);
         http_len = mqtt_connect_message(HTTP_BufHEX,PROID,AUTH_INFO,DEVID);
