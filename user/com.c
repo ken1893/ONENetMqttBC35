@@ -430,7 +430,7 @@ void  RxHandler (uint8_t rx_data)
 {
 	switch(RxState){
 		case RX_STATE_ID:
-			if(rx_data == Device[askTimes][0]){          
+			if(rx_data == Device[askTimes][0]){
 				RxTimeCnt = 1;                        // set rec timer
 				RxState = RX_STATE_LEN;	
 				RxBufClr();

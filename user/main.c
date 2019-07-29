@@ -85,13 +85,13 @@ void Hardware_Init(void)
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);	    // 中断控制器分组设置
 	  WDG_Configuration();
 
-	  SysTick_init();             // systick初始化
+	  SysTick_init();           // systick初始化
 
-    Usart1_Init(115200);        // 串口1，打印信息用
-    Usart3_Init(9600);        // 串口2，驱动BC35用
+    Usart1_Init(115200);      // 串口1，打印信息用
 	
-    Usart2_Init(9600);        // 串口2，485主模式 
-	  DE_Init();       // 485 DE
+    Usart3_Init(9600);        // 串口2，驱动BC35用，网络模块驱动
+    Usart2_Init(9600);        // 串口2，485主模式，设备通讯
+	  DE_Init();                // 485 DE
 
     UsartPrintf(USART_DEBUG, "Hardware init OK\r\n");
 }
@@ -361,10 +361,8 @@ void C1(void) 	// timing onenet send
   if(++timeCount >= 30)		// 发送间隔 60s
   {
 		timeCount = 0;
-					
-		//UsartPrintf(USART_DEBUG, "OneNet_SendData\r\n");
 					  
-    OneNet_SendData();		// onenet 发送数据	
+    OneNet_SendData();		// OneNet_SendData 发送数据	
     BC35_Clear();
   }
 	else if(timeCount == 1 || timeCount == 7 || timeCount == 14)    // 演示设备,一分钟获取3次数据
@@ -399,7 +397,7 @@ void C2(void) //  SPARE  485 ask the terminal
 
 
 //-----------------------------------------
-void C3(void) //  SPARE  
+void C3(void) //  SPARE
 //-----------------------------------------
 {
 	
