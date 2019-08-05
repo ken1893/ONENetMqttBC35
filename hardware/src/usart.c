@@ -65,18 +65,18 @@ void Usart1_Init(unsigned int baud)
     GPIO_Init(GPIOA, &gpio_initstruct);
 
     usart_initstruct.USART_BaudRate = baud;
-    usart_initstruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None;		//无硬件流控
-    usart_initstruct.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;						// 接收和发送
+    usart_initstruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None;		// 无硬件流控
+    usart_initstruct.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;						        // 接收和发送
     usart_initstruct.USART_Parity = USART_Parity_No;									//无校验
     usart_initstruct.USART_StopBits = USART_StopBits_1;								//1位停止位
-    usart_initstruct.USART_WordLength = USART_WordLength_8b;							//8位数据位
+    usart_initstruct.USART_WordLength = USART_WordLength_8b;					//8位数据位
     USART_Init(USART1, &usart_initstruct);
 
-    USART_Cmd(USART1, ENABLE);														//使能串口
+    USART_Cmd(USART_DEBUG, ENABLE);												// 使能串口
 
-    USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);									//使能接收中断
+    USART_ITConfig(USART_DEBUG, USART_IT_RXNE, ENABLE);		// 使能接收中断
 
-    nvic_initstruct.NVIC_IRQChannel = USART1_IRQn;
+    nvic_initstruct.NVIC_IRQChannel = USART1_IRQn;        // DEBUG OR DISPLAY
     nvic_initstruct.NVIC_IRQChannelCmd = ENABLE;
     nvic_initstruct.NVIC_IRQChannelPreemptionPriority = 0;
     nvic_initstruct.NVIC_IRQChannelSubPriority = 2;
@@ -84,7 +84,7 @@ void Usart1_Init(unsigned int baud)
 }
 
 //-------------------------------------------------------------------------
-//	函数名称：	Usart2_Init
+//	函数名称：	Usart2_Init  
 //	函数功能：	串口2初始化
 //	入口参数：	baud：设定的波特率
 //	返回参数：	无
@@ -119,11 +119,11 @@ void Usart2_Init(unsigned int baud)
     usart_initstruct.USART_WordLength = USART_WordLength_8b;					// 8位数据位
     USART_Init(USART2, &usart_initstruct);
 		
-    USART_Cmd(USART2, ENABLE);														// 使能串口
+    USART_Cmd(USART_485, ENABLE);												  // 使能串口
 
-    USART_ITConfig(USART2,USART_IT_RXNE, ENABLE);			// 使能接收中断
+    USART_ITConfig(USART_485,USART_IT_RXNE, ENABLE);			// 使能接收中断
 
-    nvic_initstruct.NVIC_IRQChannel = USART2_IRQn;
+    nvic_initstruct.NVIC_IRQChannel = USART2_IRQn;        // 485
     nvic_initstruct.NVIC_IRQChannelCmd = ENABLE;
     nvic_initstruct.NVIC_IRQChannelPreemptionPriority = 0;
     nvic_initstruct.NVIC_IRQChannelSubPriority = 0;
@@ -168,9 +168,9 @@ void Usart3_Init(unsigned int baud)
 
     USART_Cmd(USART3, ENABLE);														//使能串口
 
-    USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);									//使能接收中断
+    USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);				//使能接收中断
 
-    nvic_initstruct.NVIC_IRQChannel = USART3_IRQn;
+    nvic_initstruct.NVIC_IRQChannel = USART3_IRQn;        // bc35
     nvic_initstruct.NVIC_IRQChannelCmd = ENABLE;
     nvic_initstruct.NVIC_IRQChannelPreemptionPriority = 0;
     nvic_initstruct.NVIC_IRQChannelSubPriority = 0;
@@ -224,7 +224,7 @@ void UsartPrintf(USART_TypeDef *USARTx, char *fmt,...)
 
 //-------------------------------------------------------------------------
 //	函数名称：	USART1_IRQHandler
-//	函数功能：	串口1收发中断
+//	函数功能：	DEBUG串口1收发中断
 //	入口参数：	无
 //	返回参数：	无
 //	说明：		
@@ -233,7 +233,13 @@ void USART1_IRQHandler(void)
 {
     if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET) //接收中断
     {
-        USART_ClearFlag(USART1, USART_FLAG_RXNE);
+                      /* Read one byte from the receive data register         */
+			   
+        U1RxISRHandler(USART_ReceiveData(USART1) & 0xFF );       // call RxHandler
+			  //USART_ClearITPendingBit(USART_485, USART_IT_RXNE);          /* Clear the USART Receive interrupt                   */
+			
+        //USART_ClearFlag(USART1, USART_FLAG_RXNE);
+			  USART_ClearITPendingBit(USART1, USART_IT_RXNE);          //Clear the USART Receive interrupt 
     }
 }
 
@@ -247,13 +253,13 @@ void USART1_IRQHandler(void)
 
 
 //-------------------------------------------------------------------------
-//	函数名称：	USART3_IRQHandler
-//	函数功能：	串口3收发中断
+//	函数名称：	USART2_IRQHandler
+//	函数功能：	485串口2收发中断
 //	入口参数：	无
 //	返回参数：	无
 //	说明：
 //-------------------------------------------------------------------------
-void USART2_IRQHandler(void)
+void USART2_IRQHandler(void)   
 {
   RxISRHandler();
 	TxISRHandler();

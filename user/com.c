@@ -84,7 +84,8 @@ const unsigned char auchCRCLo[256] = {
 void  RxISRHandler(void);                  /* C code to process character received           */
 
 static  void  RxBufClr (void);
-static  void  RxStoINT8U (uint8_t rx_data);
+//static  void  RxStoINT8U (uint8_t rx_data);
+static  void  RxStoINT8U (uint8_t rx_data,uint8_t *l,uint8_t *so);
 
 void  RxIntDis (void);
 void  RxIntEn (void);
@@ -269,7 +270,56 @@ void Ask_pros(uint8_t suquence)
 	}
 }
 
+//-------------------------send diwen -----------串口发送---------------------------------------
+void Send_diwi(uint16_t val,uint16_t add)
+{
+	uint8_t i; 
+	
+	TxBuf[0] = 0x5A;
+	TxBuf[1] = 0xA5;
+	
+	TxBuf[2] = 5;
+	TxBuf[3] = 0x82;   // send
+	
+	TxBuf[4] = (add >> 8) & 0xff;   // add H
+	TxBuf[5] = add & 0xff;
+	
+	TxBuf[6] = (val >> 8) & 0xff;
+	TxBuf[7] = val & 0xff;
+	
+	for(i=0;i < 8;i++){
+			USART_SendData(USART1,TxBuf[i]);	
+			while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
+		}
+}
 
+void Send_diwi4(uint16_t val,uint16_t val2,uint16_t add)
+{
+	uint8_t i; 
+	
+	TxBuf[0] = 0x5A;
+	TxBuf[1] = 0xA5;
+	
+	TxBuf[2] = 7;
+	TxBuf[3] = 0x82;   // send
+	
+	TxBuf[4] = (add >> 8) & 0xff;   // add H
+	TxBuf[5] = add & 0xff;
+	
+	TxBuf[6] = (val >> 8) & 0xff;
+	TxBuf[7] = val & 0xff;
+	
+	TxBuf[8] = (val2 >> 8) & 0xff;
+	TxBuf[9] = val2 & 0xff;
+	
+	for(i=0;i < 10;i++){
+			USART_SendData(USART1,TxBuf[i]);	
+			while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
+		}
+}
+
+
+//---------------------------------------------------------------------------------
 void SW_Con(uint8_t suquence,uint8_t sta)
 {
 	Write_SingleHolding(suquence,0x06,0x0000,(uint16_t)sta);
@@ -329,9 +379,12 @@ void Read_InputRegister(void)
 			break;
 	}
 	
-	UsartPrintf(USART_DEBUG, "{\"PowerAll\":%d,\"Temp\":%d,\"Power\":%d,\"Vol\":%d,\"Cur\":%d,\"Sta\":3}",SinglePhase[0].RegS.EnegerL,SinglePhase[0].RegS.Temp,SinglePhase[0].RegS.Power,SinglePhase[0].RegS.Volt,SinglePhase[0].RegS.Current);
-	UsartPrintf(USART_DEBUG, "Input successed:%d,\r\n",RxBuf[2]);
-	UsartPrintf(USART_DEBUG,(char *)RxBuf);
+	if(OPERATING_MODE == DEBUGMODE)
+	{
+		//UsartPrintf(USART_DEBUG, "{\"PowerAll\":%d,\"Temp\":%d,\"Power\":%d,\"Vol\":%d,\"Cur\":%d,\"Sta\":3}",SinglePhase[0].RegS.EnegerL,SinglePhase[0].RegS.Temp,SinglePhase[0].RegS.Power,SinglePhase[0].RegS.Volt,SinglePhase[0].RegS.Current);
+		UsartPrintf(USART_DEBUG, "Input successed:%d,\r\n",RxBuf[2]);
+		UsartPrintf(USART_DEBUG,(char *)RxBuf);
+	}
 }
 
 
@@ -347,7 +400,6 @@ void Read_HoldingRegister()
 		case 1:
 			break;
 	}
-	UsartPrintf(USART_DEBUG, "Holding successed:%d,\r\n",TxBuf[2]);
 }
 
 /********************************************************************************
@@ -403,8 +455,6 @@ void Write_SingleHolding(uint8_t suquence,uint8_t cmd,uint16_t RegAddr,uint16_t 
 		TxEnable_Flag = 0;       // 发送完毕，关闭发送使能
 	}
 	
-	UsartPrintf(USART_DEBUG, "setting successed\r\n");
-	
 }
 
 /********************************************************************************
@@ -421,12 +471,12 @@ void Write_MultiHolding(void)	   // 写多个保持寄存器
 /*$PAGE*/
 /*
 *********************************************************************************************************
-*                                              Rx Handler
-*
+*                                              Rx Handler   
+*        Modbus handle 
 * Description: This routine is called from the Rx interrupt service handler.
 *********************************************************************************************************
 */
-void  RxHandler (uint8_t rx_data)
+void  RxHandler (uint8_t rx_data)        // modbus handle 
 {
 	switch(RxState){
 		case RX_STATE_ID:
@@ -434,25 +484,25 @@ void  RxHandler (uint8_t rx_data)
 				RxTimeCnt = 1;                        // set rec timer
 				RxState = RX_STATE_LEN;	
 				RxBufClr();
-				RxStoINT8U(rx_data);     // 
+				RxStoINT8U(rx_data,&RxBufCnt,RxBuf);     // 
 			}
 			break;
 
 		case RX_STATE_LEN:
 			if(rx_data == 0x03 || rx_data == 0x04){
 				RxState = RX_STATE_DATA;
-				RxStoINT8U(rx_data);
+				RxStoINT8U(rx_data,&RxBufCnt,RxBuf);
 				//RxRemainLen = (((RxBuf[4] << 8) + RxBuf[5]) << 1) + 2;     // *2 + 1		  // 寄存器數量
 				RxRemainLen = 29;
 			}else if(rx_data == 0x10){
 				RxState = RX_STATE_DATA1;
-				RxStoINT8U(rx_data);
+				RxStoINT8U(rx_data,&RxBufCnt,RxBuf);
 				RxRemainLen = 5;	 // 先接收5个
 			}
 			else if(rx_data == 0x06)      // 参数设置，命令
 			{
 				RxState = RX_STATE_DATA;
-				RxStoINT8U(rx_data);
+				RxStoINT8U(rx_data,&RxBufCnt,RxBuf);
 				RxRemainLen = 6;	 // 接收6个
 			}
 			else{
@@ -461,7 +511,7 @@ void  RxHandler (uint8_t rx_data)
 			break;
 
 		case RX_STATE_DATA:
-				RxStoINT8U(rx_data);
+				RxStoINT8U(rx_data,&RxBufCnt,RxBuf);
 				if (--RxRemainLen == 0) {
 					pkt_Flag = 1;			 // 有数据包需要处理,在下一个 uctsk_CYCSend中解析数据			
                  	RxState = RX_STATE_ID;	 // rec end
@@ -469,13 +519,57 @@ void  RxHandler (uint8_t rx_data)
 			break;
 
 		case RX_STATE_DATA1:
-				RxStoINT8U(rx_data);
+				RxStoINT8U(rx_data,&RxBufCnt,RxBuf);
 				if (--RxRemainLen == 0) {
 					RxRemainLen = rx_data + 2;   // 剩余寄存器数量和两个校验位
 					MulLen = rx_data + 7;		 	
                  	RxState = RX_STATE_DATA;;	 // end
 				}	
 			break;	
+	}
+}
+
+/*
+*********************************************************************************************************
+*                                              Rx Handler   
+*        diwi display handle 
+* Description: This routine is called from the Rx interrupt service handler.
+*********************************************************************************************************
+*/
+void  U1RxISRHandler(uint8_t rx_data)    // diwi   handle 
+{
+	switch(Rx1State){
+		case PROTOCOL_WAITING:      //  0x5A
+			if(rx_data == PROTOCOL_DI_S0){
+				Rx1TimeCnt = 1;  
+				Rx1State = PROTOCOL_DI_S0;	
+			}
+			break;
+			
+		case PROTOCOL_DI_S0:        //  0xA5
+			if(rx_data == PROTOCOL_DI_S1){
+				Rx1State = PROTOCOL_DI_S1;	
+				Rx1BufCnt = 0;          // clear the buf
+			}
+			else 
+			{
+				Rx1State = PROTOCOL_WAITING;
+			}
+			break;
+			
+		case PROTOCOL_DI_S1:        // LEN    start rec data
+			Rx1State = PROTOCOL_CMD;
+		  RxStoINT8U(rx_data,&Rx1BufCnt,Rx1Buf);
+      Rx1RemainLen = rx_data;
+			break;
+		
+		case PROTOCOL_CMD:
+			  RxStoINT8U(rx_data,&Rx1BufCnt,Rx1Buf);
+				if(--Rx1RemainLen == 0) {
+					     pk1t_Flag = 1;			 // 有数据包需要处理,在下一个 uctsk_CYCSend中解析数据			
+               Rx1State = PROTOCOL_WAITING;	 // rec end
+            }
+			break;
 	}
 }
 
@@ -543,10 +637,11 @@ static  void  RxBufClr (void)
 *********************************************************************************************************
 */
 
-static  void  RxStoINT8U (uint8_t rx_data)
+static  void  RxStoINT8U (uint8_t rx_data,uint8_t *l,uint8_t *so)
 {
-    if (RxBufCnt < RX_BUF_SIZE) {
-        RxBuf[RxBufCnt++] = rx_data;
+    if (*l < RX_BUF_SIZE) {
+        so[*l] = rx_data;
+			  *l = *l + 1;
     }
 }
 

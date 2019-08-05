@@ -69,8 +69,7 @@ unsigned char *dataPtr = NULL;
 unsigned short timeCount = 0;	 // 发送间隔变量
 unsigned char  StatusOne = 0;  
 
-unsigned char led_state;
-	
+uint16_t led_counter = 0;    // for leddisplay
 
 //----------------------------------------------------------------------------
 //	函数名称：	Hardware_Init
@@ -92,8 +91,6 @@ void Hardware_Init(void)
     Usart3_Init(9600);        // 串口2，驱动BC35用，网络模块驱动
     Usart2_Init(9600);        // 串口2，485主模式，设备通讯
 	  DE_Init();                // 485 DE
-
-    UsartPrintf(USART_DEBUG, "Hardware init OK\r\n");
 }
 
 /*******************************************************************************
@@ -144,12 +141,8 @@ void Para_Init(void)
 	Task2Flag = 0;
 	Task3Flag = 0;
 	
-	Flag_Poweron = 0;  // 刚刚上电标志
-	
 	dog_flag = 0;   
   NetStatus = NONET; 
-	
-	MODE = BOOTON;
 	
 	Device[0][0] = 1;   // Device 0 ID 
 }
@@ -165,6 +158,10 @@ int main(void)
 {
     Hardware_Init();				       // 初始化外围硬件
 	  Para_Init();                   // 初始化变量
+	
+	  OPERATING_MODE = NORMAL;       // 正常工作模式，带显示
+	
+	  LEDON;
 
     BC35_Init();				           // 初始化bc35
 	
@@ -172,6 +169,8 @@ int main(void)
 	
     while(OneNet_DevLink())			   // 接入OneNET
 			delay_tms(50);
+
+		LEDOFF;
 
 		// Tasks State-machine init
 	  Alpha_State_Ptr = &A0; 
@@ -246,7 +245,6 @@ void A1(void) // SPARE (not used)  deal onenet REC
   dataPtr = BC35_GetIPD(10);
   if(dataPtr != NULL)
 		OneNet_RevPro(dataPtr);
-		
 	//-------------------
 	//the next time CpuTimer0 'counter' reaches Period value go to A2
 	A_Task_Ptr = &A2;
@@ -257,6 +255,7 @@ void A1(void) // SPARE (not used)  deal onenet REC
 void A2(void) // SPARE (onenet reconnect) 
 //-----------------------------------------------------------------
 {	
+	//
 	if(dog_flag == 0)     // if everything is OK 
 	{
 		// IWDG_ReloadCounter();     // wed dog
@@ -264,9 +263,14 @@ void A2(void) // SPARE (onenet reconnect)
 	
 	if(NetStatus == ONENETOFF)  // 接入OneNET
 	{		        
+		  LEDOFF;
 			BC35_Sockets();         // TCP
 			delay_tms(20);          
 			OneNet_DevLink();       
+	}
+	else 
+	{
+		SetLED(&led_counter);  // led display
 	}
 	//-------------------
 	//the next time CpuTimer0 'counter' reaches Period value go to A3
@@ -297,9 +301,8 @@ void B1(void) // SERIALS COMmunication
 //----------------------------------------
 {
 	// deal the uart com
-	
-	if(RxTimeCnt >= 1){    // 
-		
+	// UART 485
+	if(RxTimeCnt >= 1){    // UART 485
 			RxTimeCnt++;
 			if(RxTimeCnt >= 3){	  // 判断超时
 				RxTimeCnt = 0;
@@ -311,11 +314,39 @@ void B1(void) // SERIALS COMmunication
 			}
 		}
 	
-	if(pkt_Flag == 1){    // 有数据包需要处理
-			UartDeal(askTimes);       //
+		//  UART1 
+		if(Rx1TimeCnt >= 1){    // 
+			Rx1TimeCnt++;
+			if(Rx1TimeCnt >= 3){	  // 判断超时
+				Rx1TimeCnt = 0;
+				Rx1State = PROTOCOL_WAITING;	
 
+			}
+		}
+	
+	if(pkt_Flag == 1){    // 有数据包需要处理
+			UartDeal(askTimes);       // deal 485
 			pkt_Flag = 0;     // 包处理完毕
 		}
+	
+	if(pk1t_Flag == 1)
+	{
+		switch(Rx1Buf[3])    // dwin address 
+		{
+			case 0x22:
+				//UsartPrintf(USART_DEBUG, "OPEN\r\n");
+			  SW_Con(0,SW_ON);
+				break;
+			
+			case 0x20:
+				//UsartPrintf(USART_DEBUG, "CLOSE\r\n");
+			  SW_Con(0,SW_OFF);
+				break;
+			
+			default:break;
+		}
+		pk1t_Flag = 0;     // 包处理完毕
+	}
 
 	//-----------------
 	//the next time CpuTimer1 'counter' reaches Period value go to B2
@@ -358,7 +389,7 @@ void C1(void) 	// timing onenet send
 //----------------------------------------
 {
 	//  循环发送字段  3second a time 
-  if(++timeCount >= 30)		// 发送间隔 60s
+  if(++timeCount >= 30)		// 发送间隔 120s
   {
 		timeCount = 0;
 					  
@@ -369,6 +400,7 @@ void C1(void) 	// timing onenet send
 	{
 		
 	}
+	
 	//-----------------
 	//the next time CpuTimer2 'counter' reaches Period value go to C2
 	C_Task_Ptr = &C2;	
@@ -380,14 +412,26 @@ void C2(void) //  SPARE  485 ask the terminal
 	//strategy rules
 //----------------------------------------
 {
-	if(Flag_Poweron == 0)
+	Ask_pros(0);       // ask for terminal
+	
+	if(OPERATING_MODE == NORMAL)    // 带屏幕显示，主动发送数据
 	{
-		SW_Con(0,1);
-		Flag_Poweron = 1;
-	}
-	else 
-	{
-		Ask_pros(0);       // ask for terminal
+		//Send_diwi(uint16_t val,uint16_t add);
+		
+		Send_diwi4(SinglePhase[0].RegS.EnegerH,SinglePhase[0].RegS.EnegerL,ADD_ENERGY);
+		delay_tms(1);
+		Send_diwi(SinglePhase[0].RegS.Temp,ADD_TEMP);
+		delay_tms(1);
+		Send_diwi(SinglePhase[0].RegS.Power,ADD_POWER);
+		delay_tms(1);
+		Send_diwi(SinglePhase[0].RegS.Volt,ADD_VOLT);
+		delay_tms(1);
+		Send_diwi(SinglePhase[0].RegS.Current,ADD_CURRENT);
+		delay_tms(1);
+		Send_diwi(SinglePhase[0].RegS.Leak,ADD_LEAK);
+		delay_tms(1);
+		Send_diwi(SinglePhase[0].RegS.PF,ADD_PF);
+		delay_tms(1);
 	}
 	//-----------------
 	//the next time CpuTimer2 'counter' reaches Period value go to C3
@@ -410,20 +454,34 @@ void C3(void) //  SPARE
 //-----------------------------------------
 //-----------------------------------------
 //-----------------------------------------
-uint8_t SetLED(uint8_t ls)
+uint8_t SetLED(uint16_t *ls)
 {
-	switch(ls)
+	switch(*ls)
 	{
-		case 0:
-			GPIO_SetBits(GPIOE , GPIO_Pin_13);
+		case L1ON:
+			LEDON;
 			break;
 		
-		case 1:
-			GPIO_ResetBits(GPIOE , GPIO_Pin_13);
+		case L2OFF:
+			LEDOFF;
 			break;
+		
+		case L3ON:
+			LEDON;
+			break;
+		
+		case L4OFF:
+			LEDOFF;
+			break;
+		
+		case LEND:
+			*ls = 0;
+		break;
 		
 		default:break;
 	}
+	
+	*ls = *ls + 1;
 	
 	return 0;
 }

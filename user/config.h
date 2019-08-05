@@ -15,6 +15,10 @@
 #define ActionReg    0x00      
 #define RESTARTTIMES 10 
 
+// display for one led
+#define LEDON        GPIO_ResetBits(GPIOE , GPIO_Pin_13)    
+#define LEDOFF       GPIO_SetBits(GPIOE , GPIO_Pin_13)
+
 // 设备动作
 enum ActionType {
     WAITING,           // 系统等待
@@ -37,7 +41,17 @@ enum NETSTA {
 enum BOOTMODE{
 	BOOTOFF,
 	BOOTON = 1,         // 检测到有新的终端设备上线时默认为打开
-	BOOTDONE
+	BOOTDONE,
+	DEBUGMODE,
+	NORMAL
+};
+
+enum LEDACT{          // LED ACTION
+	L1ON = 1,
+	L2OFF = 3,
+	L3ON = 5,
+	L4OFF = 7,
+	LEND = 30
 };
 
 
@@ -116,8 +130,7 @@ MAIN_EXT Meter_TypeDef Meter_Data;
 MAIN_EXT uint8_t Device[12][3];     // 设备序列表    单个485设备限定设备连接数量12台，第一个参数设备ID，第二个参数设备类型,第三个参数设备联网状态
 MAIN_EXT uint8_t DeviceCount;       // 设备数量 notused
 
-MAIN_EXT uint16_t MODE;    // 工作模式
-MAIN_EXT uint8_t Flag_Poweron;   // 上电标志
+MAIN_EXT uint16_t OPERATING_MODE;    // 工作模式
 
 MAIN_EXT uint16_t RecordAction;          // 记录上一个动作
 MAIN_EXT uint16_t Action_Flag;           // 动作标志
@@ -130,8 +143,7 @@ MAIN_EXT uint8_t dog_flag;          // 喂狗标志
 
 MAIN_EXT uint8_t askTimes;          // ?? 问询序列，本设备采用分时闻讯方式获取从机数据
 
-
-MAIN_EXT uint8_t SetLED(uint8_t ls);    // LED for status
+MAIN_EXT uint8_t SetLED(uint16_t *ls);    // LED for status
 
 #ifdef DELAY_GLOBALS
 #define DELAY_EXT

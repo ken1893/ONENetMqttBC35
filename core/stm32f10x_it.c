@@ -76,7 +76,10 @@ void HardFault_Handler(void)
 void MemManage_Handler(void)
 {
   /* Go to infinite loop when Memory Manage exception occurs */
-	UsartPrintf(USART_DEBUG, "\r\n*******************MemManage_Handler*******************\r\n");
+	if(OPERATING_MODE == DEBUGMODE)
+	{
+	  UsartPrintf(USART_DEBUG, "\r\n*******************MemManage_Handler*******************\r\n");
+	}
   while (1)
   {
   }
@@ -90,7 +93,10 @@ void MemManage_Handler(void)
 void BusFault_Handler(void)
 {
   /* Go to infinite loop when Bus Fault exception occurs */
-	UsartPrintf(USART_DEBUG, "\r\n*******************BusFault_Handler*******************\r\n");
+	if(OPERATING_MODE == DEBUGMODE)
+	{
+	  UsartPrintf(USART_DEBUG, "\r\n*******************BusFault_Handler*******************\r\n");
+	}
   while (1)
   {
   }
@@ -104,7 +110,10 @@ void BusFault_Handler(void)
 void UsageFault_Handler(void)
 {
   /* Go to infinite loop when Usage Fault exception occurs */
-	UsartPrintf(USART_DEBUG, "\r\n*******************UsageFault_Handler*******************\r\n");
+	if(OPERATING_MODE == DEBUGMODE)
+	{
+	  UsartPrintf(USART_DEBUG, "\r\n*******************UsageFault_Handler*******************\r\n");
+	}
   while (1)
   {
   }

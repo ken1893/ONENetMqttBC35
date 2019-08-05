@@ -37,7 +37,6 @@ void SysTick_init(void)
   }
 }
 
-
 /**
   * @brief  Inserts a delay time.
   * @param  nTime: specifies the delay time length, in milliseconds.
@@ -49,8 +48,6 @@ void delay_tms(__IO uint32_t nTime)
 
   while(TimingDelay != 0);
 }
-
-
 
 void TaskTimer(void)
 {

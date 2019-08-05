@@ -37,12 +37,12 @@
 #define PROID   "204115"
 
 //#define AUTH_INFO	"csicbc35"
-//#define AUTH_INFO	"czfrBC35M2"    // M2
-#define AUTH_INFO "czfrBC35M1"  // M1
+#define AUTH_INFO	"czfrBC35M2"    // M2
+//#define AUTH_INFO "czfrBC35M1"  // M1
 
 //#define DEVID		"41058860"
-//#define DEVID   "514552697"   // M2
-#define DEVID "514531952"   // M1
+#define DEVID   "514552697"   // M2
+//#define DEVID "514531952"   // M1
 
 
 extern unsigned char esp8266_buf[128];
@@ -80,9 +80,12 @@ _Bool OneNet_DevLink(void)
     unsigned char *dataPtr;
     _Bool status = 1;
 
-    UsartPrintf(USART_DEBUG, "OneNet_DevLink\r\n"
+		if(OPERATING_MODE == DEBUGMODE)
+	  {
+      UsartPrintf(USART_DEBUG, "OneNet_DevLink\r\n"
                 "PROID: %s,	AUIF: %s,	DEVID:%s\r\n"
                 , PROID, AUTH_INFO, DEVID);
+		}
 
 		// //	入口参数：	user：用户名：产品ID
    //				password：密码：鉴权信息或apikey
@@ -101,12 +104,18 @@ _Bool OneNet_DevLink(void)
         http_len = mqtt_connect_message(HTTP_BufHEX,PROID,AUTH_INFO,DEVID);
 
         //		hextostr(mqttPacket._dataHEX,mqttPacket._data,mqttPacket._len);
-        UsartPrintf(USART_DEBUG,(char *)HTTP_BufHEX);
+			  if(OPERATING_MODE == DEBUGMODE)
+	      {
+          UsartPrintf(USART_DEBUG,(char *)HTTP_BufHEX);
+				}
         BC35_SendData((u8 *)HTTP_BufHEX,http_len);		// 上传平台
 			
         dataPtr = BC35_GetIPD(250);									  // 等待平台响应
 
-        UsartPrintf(USART_DEBUG, (char *)dataPtr);
+				if(OPERATING_MODE == DEBUGMODE)
+	      {
+          UsartPrintf(USART_DEBUG, (char *)dataPtr);
+				}
         if(dataPtr != NULL)
         {
             //			if(strstr((char *)dataPtr,"20020000"))
@@ -132,7 +141,12 @@ _Bool OneNet_DevLink(void)
         MQTT_DeleteBuffer(&mqttPacket);								//删包
     }
     else
+		{
+			if(OPERATING_MODE == DEBUGMODE)
+	    {
         UsartPrintf(USART_DEBUG, "WARN:	MQTT_PacketConnect Failed\r\n");
+			}
+		}
 
     return status;
 }
@@ -142,9 +156,9 @@ unsigned char OneNet_FillBuf(char *buf)
 {
     char text[200];
     memset(text, 0, sizeof(text));
-		sprintf(text, "{\"PowerAll\":%d,\"Temp\":%d,\"Power\":%d,\"Vol\":%d,\"Cur\":%d,\"Sta\":3}",SinglePhase[0].RegS.EnegerL,SinglePhase[0].RegS.Temp,SinglePhase[0].RegS.Power,SinglePhase[0].RegS.Volt,SinglePhase[0].RegS.Current);
+	  
+		sprintf(text, "{\"PowerAll\":%d,\"Temp\":%d,\"Power\":%d,\"Vol\":%d,\"Cur\":%d,\"Sta\":%d,\"PF\":%d,\"VA\":%d}",SinglePhase[0].RegS.EnegerL,SinglePhase[0].RegS.Temp,SinglePhase[0].RegS.Power,SinglePhase[0].RegS.Volt,SinglePhase[0].RegS.Current,SinglePhase[0].RegS.Status,SinglePhase[0].RegS.PF,SinglePhase[0].RegS.PowerAll);
 	  strcat(buf, text);
-
     //	memset(text, 0, sizeof(text));
     //	sprintf(text, "{\"id\":\"Xg\",\"datapoints\":[{\"value\":%0.2f}]},", adxl362Info.x);
     //	strcat(buf, text);
@@ -206,7 +220,10 @@ void OneNet_SendData(void)
 		
     short body_len = 0, i = 0;
 
-    UsartPrintf(USART_DEBUG, "Tips:	OneNet_SendData-MQTT\r\n");
+		if(OPERATING_MODE == DEBUGMODE)
+	  {
+      UsartPrintf(USART_DEBUG, "Tips:	OneNet_SendData-MQTT\r\n");
+		}
 
     memset(buf, 0, sizeof(buf));
     memset(bufhex, 0, sizeof(bufhex));
@@ -215,7 +232,10 @@ void OneNet_SendData(void)
 		
     body_len = OneNet_FillBuf(buf);						// 填充onenet发送数据，获取当前需要发送的数据流的总长度
 		
-    UsartPrintf(USART_DEBUG, buf);
+		if(OPERATING_MODE == DEBUGMODE)
+	  {
+      UsartPrintf(USART_DEBUG, buf);
+		}
 		
     delay_tms(50);
     if(body_len)
@@ -226,16 +246,29 @@ void OneNet_SendData(void)
                 mqttPacket._data[mqttPacket._len++] = buf[i];           // 将发送的数据包填入到mqttpacket变量
 					
             mqtt_SendData_message(bufhex,buf,body_len);
-            UsartPrintf(USART_DEBUG, "bufhex:%s\r\n", bufhex);
+					
+					  if(OPERATING_MODE == DEBUGMODE)
+	          {
+              UsartPrintf(USART_DEBUG, "bufhex:%s\r\n", bufhex);
+						}
 					
             delay_tms(50);
 					
             BC35_SendData((u8 *)bufhex,strlen((const char*)bufhex)/2);										//上传数据到平台
-            UsartPrintf(USART_DEBUG, "Send %d Bytes\r\n", mqttPacket._len);
+						
+						if(OPERATING_MODE == DEBUGMODE)
+	          {
+              UsartPrintf(USART_DEBUG, "Send %d Bytes\r\n", mqttPacket._len);
+						}
             MQTT_DeleteBuffer(&mqttPacket);															//删包
         }
         else
+				{
+					if(OPERATING_MODE == DEBUGMODE)
+	        {
             UsartPrintf(USART_DEBUG, "WARN:	MQTT_NewBuffer Failed\r\n");
+					}
+				}
     }
 }
 
@@ -272,11 +305,17 @@ void OneNet_RevPro(unsigned char *cmd)
         result = MQTT_UnPacketCmd(cmd, &cmdid_topic, &req_payload, &req_len);	//解出topic和消息体
         if(result == 0)
         {
-            UsartPrintf(USART_DEBUG, "cmdid: %s, req: %s, req_len: %d\r\n", cmdid_topic, req_payload, req_len);
+						if(OPERATING_MODE == DEBUGMODE)
+	          {
+              UsartPrintf(USART_DEBUG, "cmdid: %s, req: %s, req_len: %d\r\n", cmdid_topic, req_payload, req_len);
+						}
 
             if(MQTT_PacketCmdResp(cmdid_topic, req_payload, &mqttPacket) == 0)	//命令回复组包
             {
-                UsartPrintf(USART_DEBUG, "Tips:	Send CmdResp\r\n");
+								if(OPERATING_MODE == DEBUGMODE)
+	              {
+                  UsartPrintf(USART_DEBUG, "Tips:	Send CmdResp\r\n");
+								}
                 BC35_SendData(mqttPacket._data, mqttPacket._len);				//回复命令
                 MQTT_DeleteBuffer(&mqttPacket);									//删包
             }
@@ -287,7 +326,12 @@ void OneNet_RevPro(unsigned char *cmd)
 		case MQTT_PKT_PUBACK:														// 发送Publish消息，平台回复的Ack
 
                     if(MQTT_UnPacketPublishAck(cmd) == 0)
+										{
+											if(OPERATING_MODE == DEBUGMODE)
+	                    {
                         UsartPrintf(USART_DEBUG, "Tips:	MQTT Publish Send OK\r\n");
+											}
+										}
                     break;
 
 		default:

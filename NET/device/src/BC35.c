@@ -70,8 +70,6 @@ _Bool BC35_WaitRecive(void)
 		
     BC35_cntPre = BC35_cnt;     //置为相同
 		
-    //UsartPrintf(USART_DEBUG,"Rec:BC35_cntPre,%d;BC35_cnt,%d;",BC35_cntPre,BC35_cnt); 		//for test
-		
     return REV_WAIT;							// 返回接收未完成标志
 }
 
@@ -94,12 +92,14 @@ _Bool BC35_RECDel(char *res)
 	
 	if(BC35_WaitRecive() == REV_OK)					// 如果收到数据
   {
-		UsartPrintf(USART_DEBUG,"NetStatus is %d; \n",NetStatus);
 		switch(SendType)
 		{
 			case SCMD:
-				UsartPrintf(USART_DEBUG,"SCMD REQUEST");          // print usartdebug
-				UsartPrintf(USART_DEBUG,(char *)BC35_buf);        // print usartdebug
+				if(OPERATING_MODE == DEBUGMODE)
+	      {
+				  UsartPrintf(USART_DEBUG,"SCMD REQUEST");          // print usartdebug
+				  UsartPrintf(USART_DEBUG,(char *)BC35_buf);        // print usartdebug
+				}
 			
         if(strstr((const char *)BC35_buf, res) != NULL)		// 如果检索到关键词
         {
@@ -114,16 +114,25 @@ _Bool BC35_RECDel(char *res)
 					{
 						case NONET:
 							ErrorTimes++;
-							UsartPrintf(USART_DEBUG,"ERROR HAPPENED %d times,NEED TO Check!!!\r\n",ErrorTimes);
+						  if(OPERATING_MODE == DEBUGMODE)
+	            {
+							  UsartPrintf(USART_DEBUG,"ERROR HAPPENED %d times,NEED TO Check!!!\r\n",ErrorTimes);
+							}
 							
 							if(ErrorTimes >= RESTARTTIMES)
 							{
-								 UsartPrintf(USART_DEBUG,"ERROR CRASHED,RESTART NOW!!!!!!\r\n");
+								if(OPERATING_MODE == DEBUGMODE)
+	              {
+								  UsartPrintf(USART_DEBUG,"ERROR CRASHED,RESTART NOW!!!!!!\r\n");
+								}
 							}
 							break;
 								
 							case ONENETON:
-							  UsartPrintf(USART_DEBUG,"ONENET IS OFF ,RECONNECT ONENET !!\r\n");
+								if(OPERATING_MODE == DEBUGMODE)
+	              {
+							    UsartPrintf(USART_DEBUG,"ONENET IS OFF ,RECONNECT ONENET !!\r\n");
+								}
 								NetStatus = ONENETOFF;
 							break;
 							
@@ -131,7 +140,10 @@ _Bool BC35_RECDel(char *res)
 								ErrorTimes++;
 							if(ErrorTimes >= RESTARTTIMES)
 							{
-								 UsartPrintf(USART_DEBUG,"ERROR need break out,RESTART NOW!!!!!!\r\n");
+								if(OPERATING_MODE == DEBUGMODE)
+	              {
+								  UsartPrintf(USART_DEBUG,"ERROR need break out,RESTART NOW!!!!!!\r\n");
+								}
 							}
 								break;
 								
@@ -144,7 +156,10 @@ _Bool BC35_RECDel(char *res)
 					switch(NetStatus)
 					{								
 						case ONENETON:
-							UsartPrintf(USART_DEBUG,"ONENET IS OFF ,RECONNECT ONENET !!\r\n");
+							if(OPERATING_MODE == DEBUGMODE)
+	            {
+							  UsartPrintf(USART_DEBUG,"ONENET IS OFF ,RECONNECT ONENET !!\r\n");
+							}
 							NetStatus = ONENETOFF;
 						break;
 								
@@ -155,13 +170,19 @@ _Bool BC35_RECDel(char *res)
 				break;
 				
 			case SDATA:
-				UsartPrintf(USART_DEBUG,"SDATA REQUEST IS:\r\n"); // print usartdebug
-				UsartPrintf(USART_DEBUG,(char *)BC35_buf);        // print usartdebug
+				if(OPERATING_MODE == DEBUGMODE)
+	      {
+				  UsartPrintf(USART_DEBUG,"SDATA REQUEST IS:\r\n"); // print usartdebug
+				  UsartPrintf(USART_DEBUG,(char *)BC35_buf);        // print usartdebug
+				}
 				break;
 			
 			case SGETIPD:
+				if(OPERATING_MODE == DEBUGMODE)
+	      {
 				  UsartPrintf(USART_DEBUG,"SGETIPD REQUEST IS:\r\n"); // print usartdebug
           UsartPrintf(USART_DEBUG,(char *)BC35_buf);
+				}
 					
 					if(strstr((char *)BC35_buf, ",6002,") != NULL)
 					{
@@ -189,12 +210,16 @@ _Bool BC35_RECDel(char *res)
 					switch(RECNetStatus)
 				  {
 							case 0:     // 等待连接
-								  SetLED(1);
-
-									UsartPrintf(USART_DEBUG, "收到服务器数据\r\n");
+								  if(OPERATING_MODE == DEBUGMODE)
+									{
+										if(OPERATING_MODE == DEBUGMODE)
+	                  {
+										  UsartPrintf(USART_DEBUG, "收到服务器数据\r\n");
 							
-									UsartPrintf(USART_DEBUG,(char *)BC35_buf);		
-                  UsartPrintf(USART_DEBUG, "接收完成\r\n");		
+										  UsartPrintf(USART_DEBUG,(char *)BC35_buf);		
+										  UsartPrintf(USART_DEBUG, "接收完成\r\n");		
+										}
+									}
 									
 							    //return (unsigned char *)(ptrIPD);
 							    
@@ -204,10 +229,12 @@ _Bool BC35_RECDel(char *res)
 							
 									// +NSONMI:2,47
 							case 1:      // 接收
-							    SetLED(0);
 									RecNum = ptrIPD + 10;
-									num = atoi(RecNum);
-									UsartPrintf(USART_DEBUG, "RecNUM:%s;intnum:%d\r\n",RecNum,num);
+									num = atoi(RecNum);      // how many rec num
+							    if(OPERATING_MODE == DEBUGMODE)
+	                {
+									  UsartPrintf(USART_DEBUG, "RecNUM:%s;intnum:%d\r\n",RecNum,num);
+									}
 										
 									sprintf(cmdbuf, "AT+NSORF=2,%d\r\n",num);
 										
@@ -216,11 +243,17 @@ _Bool BC35_RECDel(char *res)
 							    delay_tms(50);
 									if(BC35_WaitRecive() == REV_OK)							//如果收到数据
 									{
+										if(OPERATING_MODE == DEBUGMODE)
+	                  {
 											UsartPrintf(USART_DEBUG,(char *)BC35_buf);
+										}
 									}
 									delay_tms(50);
 										
-									UsartPrintf(USART_DEBUG,"Receive data ready!\r\n");
+									if(OPERATING_MODE == DEBUGMODE)
+	                {
+									  UsartPrintf(USART_DEBUG,"Receive data ready!\r\n");
+									}
 									RECNetStatus = 0xff;				  // 处理完成
 								break;
 									
@@ -228,7 +261,10 @@ _Bool BC35_RECDel(char *res)
 								switch(NetStatus)
 							  {								
 								  case ONENETON:
-									  UsartPrintf(USART_DEBUG,"ONENET IS OFF ,RECONNECT ONENET !!\r\n");
+										if(OPERATING_MODE == DEBUGMODE)
+	                  {
+									    UsartPrintf(USART_DEBUG,"ONENET IS OFF ,RECONNECT ONENET !!\r\n");
+										}
 								    NetStatus = ONENETOFF;
 									  break;
 								
@@ -290,7 +326,11 @@ void BC35_SendData(unsigned char *data, unsigned short len)
     char HTTP_BufSendAT[500];
     memset(HTTP_BufSendAT, 0, sizeof(HTTP_BufSendAT));
     sprintf((char*)(HTTP_BufSendAT),"%s,%d,%s\r\n","AT+NSOSD=2",len,(char *)data);
-    UsartPrintf(USART_DEBUG,(char *)HTTP_BufSendAT);
+	
+	  if(OPERATING_MODE == DEBUGMODE)
+	  {
+      UsartPrintf(USART_DEBUG,(char *)HTTP_BufSendAT);
+		}
 	
     if(!BC35_SendCmd(HTTP_BufSendAT, "OK"))				//收到‘>’时可以发送数据
     {
@@ -301,8 +341,11 @@ void BC35_SendData(unsigned char *data, unsigned short len)
 			  BC35_RECDel((char *)data);
 
         delay_tms(50);
-        //		UsartPrintf(USART_DEBUG,(char *)HTTP_BufSend);
-        UsartPrintf(USART_DEBUG,"DATA Send OK\r\n");
+			  if(OPERATING_MODE == DEBUGMODE)
+	      {
+          //		UsartPrintf(USART_DEBUG,(char *)HTTP_BufSend);
+          UsartPrintf(USART_DEBUG,"DATA Send OK\r\n");
+				}
         //		BC35_SendCmd("AT+QIRD=0,1500\r\n","+QIRD:");
     }
 }
@@ -350,12 +393,13 @@ unsigned char *BC35_GetIPD(unsigned short timeOut)
 //==========================================================
 void BC35_Init(void)
 {
-		//                1
     BC35_Clear();                          
     //delay_tms(100);
 	  
-	  //                2
-    UsartPrintf(USART_DEBUG, "1.ATE0\r\n");     // 关闭回显
+	  if(OPERATING_MODE == DEBUGMODE)
+	  {
+      UsartPrintf(USART_DEBUG, "1.ATE0\r\n");     // 关闭回显
+		}
     while(BC35_SendCmd("ATE0\r\n", "OK"))
         delay_tms(50);
     
@@ -364,12 +408,18 @@ void BC35_Init(void)
         delay_tms(50);
     
 		//                4                         // 测试指令，返回ok
-    UsartPrintf(USART_DEBUG, "2.AT\r\n");
+		if(OPERATING_MODE == DEBUGMODE)
+	  {
+      UsartPrintf(USART_DEBUG, "2.AT\r\n");
+		}
     while(BC35_SendCmd("AT\r\n", "OK"))	        // 看下卡状态是否OK 能否获取到卡号
         delay_tms(50);
     
 		//                5                         // 查询模块序列号
-    UsartPrintf(USART_DEBUG, "3.AT+CGSN=1\r\n");// 获取IMEI
+		if(OPERATING_MODE == DEBUGMODE)
+	  {
+      UsartPrintf(USART_DEBUG, "3.AT+CGSN=1\r\n");// 获取IMEI
+		}
     while(BC35_SendCmd("AT+CGSN=1\r\n", "OK"))
         delay_tms(50);
 		
@@ -378,31 +428,49 @@ void BC35_Init(void)
 		//                                            查询
     if(!BC35_SendCmd("AT+NBAND?\r\n","+NBAND:5"))// 判断是否为+NBAND:5
     { 
-			UsartPrintf(USART_DEBUG, "BAND:5 REG[..]\r\n");  // 是否是电信的
+			if(OPERATING_MODE == DEBUGMODE)
+	    {
+			  UsartPrintf(USART_DEBUG, "BAND:5 REG[..]\r\n");  // 是否是电信的
+			}
     }
     else
     { 
-			UsartPrintf(USART_DEBUG, "BAND:8 REG[..]\r\n");  // 否则就是移动联通
+			if(OPERATING_MODE == DEBUGMODE)
+	    {
+			  UsartPrintf(USART_DEBUG, "BAND:8 REG[..]\r\n");  // 否则就是移动联通
+			}
     }
 
     delay_tms(50);
     
 		//                 10     查询SIM的IMSI值
     BC35_Clear();
-    UsartPrintf(USART_DEBUG, "4.AT+CIMI\r\n");
+		if(OPERATING_MODE == DEBUGMODE)
+	  {
+        UsartPrintf(USART_DEBUG, "4.AT+CIMI\r\n");
+		}
     if(!BC35_SendCmd("AT+CIMI\r\n","OK"))
     {
-			UsartPrintf(USART_DEBUG, "NBSIMCARD [OK]\r\n");
+			if(OPERATING_MODE == DEBUGMODE)
+	    {
+			  UsartPrintf(USART_DEBUG, "NBSIMCARD [OK]\r\n");
+			}
     }
     else
     {
-			UsartPrintf(USART_DEBUG, "NBSIMCARD [NO]\r\n");
+			if(OPERATING_MODE == DEBUGMODE)
+	    {
+			  UsartPrintf(USART_DEBUG, "NBSIMCARD [NO]\r\n");
+			}
     }
     delay_tms(50);
     
 		//                 11                            查询信号强度
     BC35_Clear();
-    UsartPrintf(USART_DEBUG, "5.AT+CSQ\r\n");
+		if(OPERATING_MODE == DEBUGMODE)
+	  {
+      UsartPrintf(USART_DEBUG, "5.AT+CSQ\r\n");
+		}
     while(!BC35_SendCmd("AT+CSQ\r\n","CSQ:99,99"))             // 激活
         delay_tms(50);
 
@@ -429,24 +497,39 @@ void BC35_Init(void)
 		*/
 		
     BC35_Clear();
-    UsartPrintf(USART_DEBUG, "6.AT+CGATT=1\r\n");
+		if(OPERATING_MODE == DEBUGMODE)
+	  {
+      UsartPrintf(USART_DEBUG, "6.AT+CGATT=1\r\n");
+		}
     BC35_SendCmd("AT+CGATT=1\r\n","OK");                   //激活状态
     delay_tms(50);
     
 		//                 13
-    UsartPrintf(USART_DEBUG, "7.AT+CGATT?\r\n");     // 查询网络激活状态
+		if(OPERATING_MODE == DEBUGMODE)
+	  {
+      UsartPrintf(USART_DEBUG, "7.AT+CGATT?\r\n");     // 查询网络激活状态
+		}
     while(BC35_SendCmd("AT+CGATT?\r\n","CGATT:1"))         //激活状态
     {
+			if(OPERATING_MODE == DEBUGMODE)
+	    {
         UsartPrintf(USART_DEBUG, "Regedit PDP[..]\r\n");
+			}
         delay_tms(50);
     }
     
 		//                 24
-    UsartPrintf(USART_DEBUG, "8.AT+CGPADDR\r\n");     // 查询模块获取的IP
+		if(OPERATING_MODE == DEBUGMODE)
+	  {
+      UsartPrintf(USART_DEBUG, "8.AT+CGPADDR\r\n");     // 查询模块获取的IP
+		}
     BC35_SendCmd("AT+CGPADDR\r\n","OK");              // 激活状态
     delay_tms(50);
 
-    UsartPrintf(USART_DEBUG, "9.AT+NSOCR=STREAM,6,35001,1\r\n");        //  TCP
+		if(OPERATING_MODE == DEBUGMODE)
+	  {
+      UsartPrintf(USART_DEBUG, "9.AT+NSOCR=STREAM,6,35001,1\r\n");        //  TCP
+		}
     while(BC35_SendCmd("AT+NSOCR=STREAM,6,35001,1\r\n","OK"))           //必须为单连接，不然平台IP都连不上
     {
         BC35_SendCmd("AT+NSOCL=1\r\n","OK");
@@ -454,7 +537,10 @@ void BC35_Init(void)
     }
 		
 		NetStatus = SIMON;     // net状态，设备已注册
-    UsartPrintf(USART_DEBUG, "=====BC35 Init OK=====\r\n");
+		if(OPERATING_MODE == DEBUGMODE)
+	  {
+      UsartPrintf(USART_DEBUG, "=====BC35 Init OK=====\r\n");
+		}
 
 		/*
     UsartPrintf(USART_DEBUG, "-----------------\r\n");
@@ -478,17 +564,33 @@ void BC35_Init(void)
 
 void BC35_Sockets(void)
 {
-	UsartPrintf(USART_DEBUG, "-----------------\r\n");
+	if(OPERATING_MODE == DEBUGMODE)
+	{
+	  UsartPrintf(USART_DEBUG, "-----------------\r\n");
     UsartPrintf(USART_DEBUG, BC35_ONENET_INFO);
+	}
+	
     while(BC35_SendCmd(BC35_ONENET_INFO,"OK"))				// 连接到服务器
     {
+			if(OPERATING_MODE == DEBUGMODE)
+	    {
         UsartPrintf(USART_DEBUG, "AT+NSOCL=1\r\n");
+			}
+			
         BC35_SendCmd("AT+NSOCL=1\r\n","OK");
         delay_tms(50);
-        UsartPrintf(USART_DEBUG, "AT+NSOCR=STREAM,6,35001,1\r\n");
+			
+			  if(OPERATING_MODE == DEBUGMODE)
+	      {
+          UsartPrintf(USART_DEBUG, "AT+NSOCR=STREAM,6,35001,1\r\n");
+				}
         while(BC35_SendCmd("AT+NSOCR=STREAM,6,35001,1\r\n","OK"))	// 必须为单连接，不然平台IP都连不上
         {
+					if(OPERATING_MODE == DEBUGMODE)
+	        {
             UsartPrintf(USART_DEBUG, "AT+NSOCL=1\r\n");
+					}
+					
             BC35_SendCmd("AT+NSOCL=1\r\n","OK");
             delay_tms(50);
 					  if(ErrorTimes > 10)
@@ -501,8 +603,8 @@ void BC35_Sockets(void)
 }
 
 //==========================================================
-//	函数名称：	USART2_IRQHandler
-//	函数功能：	串口2收发中断
+//	函数名称：	USART3_IRQHandler
+//	函数功能：	BC35串口3收发中断
 //	入口参数：	无
 //	返回参数：	无
 //	说明:
@@ -511,7 +613,7 @@ void USART3_IRQHandler(void)
 {
     if(USART_GetITStatus(USART_BC35, USART_IT_RXNE) != RESET) // 接收中断
     {
-        if(BC35_cnt >= sizeof(BC35_buf))	BC35_cnt = 0;   // 防止串口被刷爆
+        if(BC35_cnt >= sizeof(BC35_buf))	BC35_cnt = 0;       // 防止串口被刷爆
         BC35_buf[BC35_cnt++] = USART_BC35->DR;
 
         USART_ClearFlag(USART_BC35, USART_FLAG_RXNE);

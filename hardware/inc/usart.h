@@ -21,7 +21,7 @@
 #define UARTRECEIVE  DE_ON
 
 #define USART_DEBUG		USART1		// 调试打印所使用的串口组
-#define USART_BC35    USART3
+#define USART_BC35    USART3  
 #define USART_485		  USART2
 	
 void DE_Init(void);      // 485 DE Init
@@ -33,7 +33,5 @@ void Usart2_Init(unsigned int baud);      // for 485/GPS
 void Usart_SendString(USART_TypeDef *USARTx, unsigned char *str, unsigned short len);
 void UsartPrintf(USART_TypeDef *USARTx, char *fmt,...);
 	
-
-
 
 #endif
